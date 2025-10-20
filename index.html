@@ -618,20 +618,29 @@
         let isDarkTheme = false;
         let isDatabaseAvailable = true;
         let useLocalStorage = false;
-        let localData = {};
-    
-        // === FIREBASE ФУНКЦИИ С ПРОВЕРКОЙ ДОСТУПНОСТИ ===
+
+        // === FIREBASE ФУНКЦИИ ===
     
         function loadData() {
+            // Сначала загружаем из Local Storage для быстрого отображения
+            const localData = loadFromLocalStorage();
+            if (localData) {
+                currentDays = localData.currentDays || 0;
+                maxDays = localData.maxDays || 0;
+                lastDismissalDate = new Date(localData.lastDismissalDate || Date.now());
+                updateDisplay();
+            }
+            
+            // Затем пытаемся загрузить из Firebase
             const dataRef = database.ref('dismissalTracker');
             
-            // Пытаемся загрузить из Firebase с таймаутом
             const dbTimeout = setTimeout(() => {
                 if (isDatabaseAvailable) {
                     showDatabaseError();
-                    loadFromLocalStorage();
+                    // Если БД недоступна, продолжаем использовать LS данные
+                    useLocalStorage = true;
                 }
-            }, 5000); // 5 секунд таймаут
+            }, 5000);
             
             dataRef.on('value', (snapshot) => {
                 clearTimeout(dbTimeout);
@@ -642,23 +651,40 @@
                     useLocalStorage = false;
                 }
                 
-                const data = snapshot.val();
+                const firebaseData = snapshot.val();
                 
-                if (data) {
-                    currentDays = data.currentDays || 0;
-                    maxDays = data.maxDays || 0;
-                    lastDismissalDate = new Date(data.lastDismissalDate || Date.now());
+                if (firebaseData) {
+                    // ПРИОРИТЕТ У ДАННЫХ ИЗ БД - всегда используем данные из Firebase
+                    console.log('Using Firebase data (priority)');
+                    currentDays = firebaseData.currentDays || 0;
+                    maxDays = firebaseData.maxDays || 0;
+                    lastDismissalDate = new Date(firebaseData.lastDismissalDate || Date.now());
                     
                     updateCounterFromDates();
                     updateDisplay();
+                    
+                    // Обновляем локальное хранилище данными из БД
+                    saveToLocalStorage({
+                        currentDays: currentDays,
+                        maxDays: maxDays,
+                        lastDismissalDate: lastDismissalDate.getTime()
+                    });
                 } else {
-                    initDefaultData();
+                    // Данных в Firebase нет
+                    if (localData) {
+                        // Сохраняем локальные данные в Firebase
+                        console.log('Saving local data to Firebase');
+                        saveData();
+                    } else {
+                        initDefaultData();
+                    }
                 }
             }, (error) => {
                 // Ошибка подключения к БД
                 clearTimeout(dbTimeout);
                 showDatabaseError();
-                loadFromLocalStorage();
+                useLocalStorage = true;
+                // Продолжаем использовать LS данные (уже загружены выше)
             });
         }
     
@@ -670,7 +696,7 @@
                 lastUpdated: Date.now()
             };
             
-            // Сохраняем локально в любом случае
+            // Всегда сохраняем локально
             saveToLocalStorage(data);
             
             // Пытаемся сохранить в Firebase если доступно
@@ -692,32 +718,27 @@
             lastDismissalDate = new Date();
             saveData();
         }
-    
+
         // === ЛОКАЛЬНОЕ ХРАНИЛИЩЕ ===
     
         function saveToLocalStorage(data) {
-            localData = data;
             localStorage.setItem('dismissalTrackerLocal', JSON.stringify(data));
         }
     
         function loadFromLocalStorage() {
             const saved = localStorage.getItem('dismissalTrackerLocal');
             if (saved) {
-                const data = JSON.parse(saved);
-                currentDays = data.currentDays || 0;
-                maxDays = data.maxDays || 0;
-                lastDismissalDate = new Date(data.lastDismissalDate || Date.now());
-                
-                updateCounterFromDates();
-                updateDisplay();
-                console.log('Loaded from local storage');
-            } else {
-                initDefaultData();
+                try {
+                    return JSON.parse(saved);
+                } catch (e) {
+                    console.error('Error parsing local storage data:', e);
+                    return null;
+                }
             }
-            useLocalStorage = true;
+            return null;
         }
-    
-        // === ЛОКАЛЬНОЕ ХРАНЕНИЕ ТЕМЫ ===
+
+        // === ТЕМА ===
     
         function loadTheme() {
             const savedTheme = localStorage.getItem('userTheme');
@@ -757,7 +778,7 @@
                 moonIcon.classList.add('inactive');
             }
         }
-    
+
         // === УВЕДОМЛЕНИЯ О БД ===
     
         function showDatabaseError() {
@@ -765,7 +786,6 @@
             const notification = document.getElementById('db-notification');
             notification.classList.add('show');
             
-            // Автоматически скрыть через 10 секунд
             setTimeout(() => {
                 hideDatabaseError();
             }, 10000);
@@ -775,12 +795,11 @@
             const notification = document.getElementById('db-notification');
             notification.classList.remove('show');
         }
-    
+
         // === ПРОВЕРКА СОЕДИНЕНИЯ ===
     
         function checkDatabaseConnection() {
             if (!isDatabaseAvailable) {
-                // Пытаемся переподключиться
                 const dataRef = database.ref('.info/connected');
                 dataRef.on('value', (snapshot) => {
                     if (snapshot.val() === true && useLocalStorage) {
@@ -793,7 +812,7 @@
                 });
             }
         }
-    
+
         // === ОСНОВНЫЕ ФУНКЦИИ ===
     
         function updateCounterFromDates() {
@@ -857,7 +876,7 @@
             const options = { day: 'numeric', month: 'long', year: 'numeric' };
             return date.toLocaleDateString('ru-RU', options);
         }
-    
+
         // === МОДАЛЬНЫЕ ОКНА ===
     
         function openEditModal(type) {
@@ -899,6 +918,7 @@
             }
             
             saveData();
+            updateDisplay();
             closeEditModal();
         }
     
@@ -925,9 +945,10 @@
             lastDismissalDate = new Date(lastDismissalInput.value);
             updateCounterFromDates();
             saveData();
+            updateDisplay();
             closeDateModal();
         }
-    
+
         // === ОБРАБОТЧИКИ СОБЫТИЙ ===
     
         document.getElementById('reset-btn').addEventListener('click', function() {
@@ -935,6 +956,7 @@
                 currentDays = 0;
                 lastDismissalDate = new Date();
                 saveData();
+                updateDisplay();
             }
         });
     
@@ -948,7 +970,7 @@
             if (event.target === editModal) closeEditModal();
             if (event.target === dateModal) closeDateModal();
         });
-    
+
         // === ИНИЦИАЛИЗАЦИЯ ===
         document.addEventListener('DOMContentLoaded', function() {
             loadTheme();
