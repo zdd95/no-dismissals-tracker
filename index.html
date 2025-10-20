@@ -454,6 +454,9 @@
             }
         }
     </style>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 </head>
 <body>
     <div class="container">
@@ -534,159 +537,149 @@
     </div>
 
     <script>
-        // Функции для работы с localStorage
+        // КОНФИГ FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyAt1WW8HxJImwyPm3l0an8H-BvM4fq2csw",
+            authDomain: "no-dismissals-tracker.firebaseapp.com",
+            databaseURL: "https://no-dismissals-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "no-dismissals-tracker",
+            storageBucket: "no-dismissals-tracker.firebasestorage.app",
+            messagingSenderId: "167356930677",
+            appId: "1:167356930677:web:bcaebc910146c4f9b4763c"
+        };
+
+        // Инициализация Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Глобальные переменные
+        let currentDays, maxDays, lastDismissalDate;
+        let currentEditType = '';
+        let isDarkTheme = false;
+
+        // === FIREBASE ФУНКЦИИ ===
+
+        function loadData() {
+            const dataRef = database.ref('dismissalTracker');
+            
+            dataRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                
+                if (data) {
+                    currentDays = data.currentDays || 3;
+                    maxDays = data.maxDays || 116;
+                    lastDismissalDate = new Date(data.lastDismissalDate || (Date.now() - 3 * 24 * 60 * 60 * 1000));
+                    
+                    // Загружаем тему
+                    isDarkTheme = data.darkTheme || false;
+                    if (isDarkTheme) {
+                        document.body.classList.add('dark-theme');
+                        document.getElementById('theme-switch').checked = true;
+                        updateThemeIcons();
+                    }
+                    
+                    updateCounterFromDates();
+                    updateDisplay();
+                } else {
+                    // Первая инициализация
+                    initDefaultData();
+                }
+            });
+        }
+
         function saveData() {
             const data = {
                 currentDays: currentDays,
                 maxDays: maxDays,
                 lastDismissalDate: lastDismissalDate.getTime(),
-                darkTheme: isDarkTheme
+                darkTheme: isDarkTheme,
+                lastUpdated: Date.now()
             };
-            localStorage.setItem('dismissalTracker', JSON.stringify(data));
+            
+            database.ref('dismissalTracker').set(data)
+                .then(() => console.log('Data saved successfully'))
+                .catch((error) => console.error('Error saving data:', error));
         }
-        
-        function loadData() {
-            const saved = localStorage.getItem('dismissalTracker');
-            if (saved) {
-                const data = JSON.parse(saved);
-                currentDays = data.currentDays;
-                maxDays = data.maxDays;
-                lastDismissalDate = new Date(data.lastDismissalDate);
-                isDarkTheme = data.darkTheme || false;
-                
-                // Применяем тему
-                if (isDarkTheme) {
-                    document.body.classList.add('dark-theme');
-                    document.getElementById('theme-switch').checked = true;
-                    updateThemeIcons();
-                }
-                
-                // Автоматически обновляем счетчик при загрузке
-                updateCounterFromDates();
-            } else {
-                // Значения по умолчанию
-                currentDays = 3;
-                maxDays = 116;
-                lastDismissalDate = new Date();
-                lastDismissalDate.setDate(lastDismissalDate.getDate() - 3);
-                isDarkTheme = false;
-            }
-        }
-        
-        // Переключение темы
-        let isDarkTheme = false;
-        
-        function toggleTheme() {
-            isDarkTheme = !isDarkTheme;
-            document.body.classList.toggle('dark-theme', isDarkTheme);
-            updateThemeIcons();
+
+        function initDefaultData() {
+            currentDays = 3;
+            maxDays = 116;
+            lastDismissalDate = new Date();
+            lastDismissalDate.setDate(lastDismissalDate.getDate() - 3);
             saveData();
         }
-        
-        function updateThemeIcons() {
-            const sunIcon = document.querySelector('.sun-icon');
-            const moonIcon = document.querySelector('.moon-icon');
-            
-            if (isDarkTheme) {
-                sunIcon.classList.remove('active');
-                sunIcon.classList.add('inactive');
-                moonIcon.classList.remove('inactive');
-                moonIcon.classList.add('active');
-            } else {
-                sunIcon.classList.remove('inactive');
-                sunIcon.classList.add('active');
-                moonIcon.classList.remove('active');
-                moonIcon.classList.add('inactive');
-            }
-        }
-        
-        // Обновление счетчика на основе дат
+
+        // === СУЩЕСТВУЮЩИЕ ФУНКЦИИ (адаптированные) ===
+
         function updateCounterFromDates() {
             const today = new Date();
             const daysSinceLastDismissal = Math.floor((today - lastDismissalDate) / (1000 * 60 * 60 * 24));
             
-            // Обновляем текущую серию
             currentDays = daysSinceLastDismissal;
             
-            // Обновление максимального значения, если текущее больше
             if (currentDays > maxDays) {
                 maxDays = currentDays;
+                saveData(); // Сохраняем новый рекорд
             }
         }
-        
-        // Обновление дат на основе счетчика
+
         function updateDatesFromCounter() {
             const today = new Date();
             lastDismissalDate = new Date(today);
             lastDismissalDate.setDate(today.getDate() - currentDays);
         }
-        
-        // Автоматическое обновление в 00:01
+
         function checkAutoUpdate() {
             const now = new Date();
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
             const lastUpdate = new Date(lastDismissalDate.getFullYear(), lastDismissalDate.getMonth(), lastDismissalDate.getDate());
             
-            // Если прошли сутки с последнего обновления и сейчас после 00:01
             if (today > lastUpdate && now.getHours() >= 0 && now.getMinutes() >= 1) {
                 updateCounterFromDates();
                 updateDisplay();
             }
         }
-        
-        // Инициализация данных
-        let currentDays, maxDays, lastDismissalDate;
-        loadData();
-        
-        let currentEditType = ''; // 'current' или 'max'
-        
+
         // Функция для получения дня недели
         function getDayOfWeek(date) {
             const days = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
             return days[date.getDay()];
         }
-        
+
         // Функция для обновления времени
         function updateTime() {
             const now = new Date();
             
-            // Текущее время
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
             
-            // Текущая дата
             const day = String(now.getDate()).padStart(2, '0');
             const month = String(now.getMonth() + 1).padStart(2, '0');
             const year = now.getFullYear();
             
-            // День недели
             const dayOfWeek = getDayOfWeek(now);
             
-            // Формируем полную строку времени
             const fullTimeString = `${dayOfWeek}, ${day}.${month}.${year}, ${hours}:${minutes}:${seconds}`;
             document.getElementById('full-time').textContent = fullTimeString;
         }
-        
+
         // Обновление отображения
         function updateDisplay() {
             document.getElementById('current-days').textContent = currentDays;
             document.getElementById('max-days').textContent = maxDays;
             
-            // Отображаем конкретную дату последнего увольнения
             document.getElementById('last-dismissal').textContent = formatDate(lastDismissalDate);
-            
-            // Сохранение данных
-            saveData();
         }
-        
+
         // Форматирование даты
         function formatDate(date) {
             const options = { day: 'numeric', month: 'long', year: 'numeric' };
             return date.toLocaleDateString('ru-RU', options);
         }
-        
-        // Открытие модального окна для редактирования счетчиков
+
+        // === МОДАЛЬНЫЕ ОКНА ===
+
         function openEditModal(type) {
             currentEditType = type;
             const modal = document.getElementById('editModal');
@@ -704,13 +697,11 @@
             modal.style.display = 'flex';
             input.focus();
         }
-        
-        // Закрытие модального окна для редактирования счетчиков
+
         function closeEditModal() {
             document.getElementById('editModal').style.display = 'none';
         }
-        
-        // Сохранение изменений счетчиков
+
         function saveEdit() {
             const input = document.getElementById('edit-value');
             const value = parseInt(input.value);
@@ -722,33 +713,27 @@
             
             if (currentEditType === 'current') {
                 currentDays = value;
-                // При изменении текущего счетчика обновляем даты
                 updateDatesFromCounter();
             } else if (currentEditType === 'max') {
                 maxDays = value;
             }
             
-            updateDisplay();
+            saveData();
             closeEditModal();
         }
-        
-        // Открытие модального окна для редактирования дат
+
         function openDateModal() {
             const modal = document.getElementById('dateModal');
             const lastDismissalInput = document.getElementById('last-dismissal-date');
             
-            // Установка текущего значения
             lastDismissalInput.valueAsDate = lastDismissalDate;
-            
             modal.style.display = 'flex';
         }
-        
-        // Закрытие модального окна для редактирования дат
+
         function closeDateModal() {
             document.getElementById('dateModal').style.display = 'none';
         }
-        
-        // Сохранение изменений дат
+
         function saveDates() {
             const lastDismissalInput = document.getElementById('last-dismissal-date');
             
@@ -758,53 +743,67 @@
             }
             
             lastDismissalDate = new Date(lastDismissalInput.value);
-            
-            // При изменении дат обновляем счетчик
             updateCounterFromDates();
-            
-            updateDisplay();
+            saveData();
             closeDateModal();
         }
-        
-        // Обработчики событий
+
+        // === ТЕМА ===
+
+        function toggleTheme() {
+            isDarkTheme = !isDarkTheme;
+            document.body.classList.toggle('dark-theme', isDarkTheme);
+            updateThemeIcons();
+            saveData();
+        }
+
+        function updateThemeIcons() {
+            const sunIcon = document.querySelector('.sun-icon');
+            const moonIcon = document.querySelector('.moon-icon');
+            
+            if (isDarkTheme) {
+                sunIcon.classList.remove('active');
+                sunIcon.classList.add('inactive');
+                moonIcon.classList.remove('inactive');
+                moonIcon.classList.add('active');
+            } else {
+                sunIcon.classList.remove('inactive');
+                sunIcon.classList.add('active');
+                moonIcon.classList.remove('active');
+                moonIcon.classList.add('inactive');
+            }
+        }
+
+        // === ОБРАБОТЧИКИ СОБЫТИЙ ===
+
         document.getElementById('reset-btn').addEventListener('click', function() {
             if (confirm('Вы уверены, что хотите сбросить счётчик? Это действие нельзя отменить.')) {
                 currentDays = 0;
                 lastDismissalDate = new Date();
-                updateDisplay();
+                saveData();
             }
         });
-        
+
         document.getElementById('edit-date-btn').addEventListener('click', openDateModal);
-        
         document.getElementById('theme-switch').addEventListener('change', toggleTheme);
-        
-        // Закрытие модальных окон при клике вне их области
+
+        // Закрытие модальных окон
         window.addEventListener('click', function(event) {
             const editModal = document.getElementById('editModal');
             const dateModal = document.getElementById('dateModal');
             
-            if (event.target === editModal) {
-                closeEditModal();
-            }
-            
-            if (event.target === dateModal) {
-                closeDateModal();
-            }
+            if (event.target === editModal) closeEditModal();
+            if (event.target === dateModal) closeDateModal();
         });
-        
-        // Инициализация при загрузке
-        updateDisplay();
-        updateTime();
-        updateThemeIcons();
-        
-        // Обновление времени каждую секунду
-        setInterval(updateTime, 1000);
-        
-        // Проверка автообновления каждую минуту
-        setInterval(function() {
-            checkAutoUpdate();
-        }, 60000);
+
+        // === ИНИЦИАЛИЗАЦИЯ ===
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+            updateTime();
+            setInterval(updateTime, 1000);
+            setInterval(checkAutoUpdate, 60000);
+        });
+
     </script>
 </body>
 </html>
