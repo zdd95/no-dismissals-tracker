@@ -36,7 +36,7 @@
             width: 100%;
             text-align: center;
             position: relative;
-            margin-top: 60px; /* Увеличенный отступ сверху для времени и переключателя */
+            margin-top: 60px;
         }
         
         .dark-theme .container {
@@ -46,7 +46,7 @@
         
         .time-display {
             position: absolute;
-            top: -60px; /* Увеличенный отступ от окна */
+            top: -60px;
             right: 0;
             background-color: white;
             color: #2c3e50;
@@ -70,7 +70,7 @@
         
         .theme-toggle {
             position: absolute;
-            top: -60px; /* Увеличенный отступ от окна */
+            top: -60px;
             left: 0;
             background-color: white;
             color: #2c3e50;
@@ -418,6 +418,52 @@
         .save-btn:hover {
             background-color: #27ae60;
         }
+
+        /* Стили для уведомления о недоступности БД */
+        .db-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #e74c3c;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            z-index: 1001;
+            display: none;
+            max-width: 300px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .db-notification.show {
+            display: block;
+        }
+
+        .db-notification .notification-content {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .db-notification .notification-icon {
+            font-size: 1.2rem;
+        }
+
+        .db-notification .notification-text {
+            flex: 1;
+            font-weight: 600;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
         
         @media (max-width: 600px) {
             .counter-container {
@@ -451,6 +497,12 @@
             
             .theme-icons {
                 gap: 8px;
+            }
+
+            .db-notification {
+                right: 10px;
+                left: 10px;
+                max-width: none;
             }
         }
     </style>
@@ -497,7 +549,7 @@
         </div>
         
         <div class="date-info">
-            <p>Последнее увольнение: <span id="last-dismissal">21 октября 2025 г.</span></p>
+            <p>Последнее увольнение: <span id="last-dismissal">0</span></p>
         </div>
         
         <div class="buttons">
@@ -536,6 +588,14 @@
         </div>
     </div>
 
+    <!-- Уведомление о недоступности БД -->
+    <div class="db-notification" id="db-notification">
+        <div class="notification-content">
+            <span class="notification-icon">⚠️</span>
+            <span class="notification-text">БД не доступно. Используется локальное хранилище.</span>
+        </div>
+    </div>
+
     <script>
         // КОНФИГ FIREBASE
         const firebaseConfig = {
@@ -556,13 +616,32 @@
         let currentDays, maxDays, lastDismissalDate;
         let currentEditType = '';
         let isDarkTheme = false;
+        let isDatabaseAvailable = true;
+        let useLocalStorage = false;
+        let localData = {};
     
-        // === FIREBASE ФУНКЦИИ ===
+        // === FIREBASE ФУНКЦИИ С ПРОВЕРКОЙ ДОСТУПНОСТИ ===
     
         function loadData() {
             const dataRef = database.ref('dismissalTracker');
             
+            // Пытаемся загрузить из Firebase с таймаутом
+            const dbTimeout = setTimeout(() => {
+                if (isDatabaseAvailable) {
+                    showDatabaseError();
+                    loadFromLocalStorage();
+                }
+            }, 5000); // 5 секунд таймаут
+            
             dataRef.on('value', (snapshot) => {
+                clearTimeout(dbTimeout);
+                
+                if (!isDatabaseAvailable) {
+                    hideDatabaseError();
+                    isDatabaseAvailable = true;
+                    useLocalStorage = false;
+                }
+                
                 const data = snapshot.val();
                 
                 if (data) {
@@ -573,9 +652,13 @@
                     updateCounterFromDates();
                     updateDisplay();
                 } else {
-                    // Первая инициализация
                     initDefaultData();
                 }
+            }, (error) => {
+                // Ошибка подключения к БД
+                clearTimeout(dbTimeout);
+                showDatabaseError();
+                loadFromLocalStorage();
             });
         }
     
@@ -587,17 +670,51 @@
                 lastUpdated: Date.now()
             };
             
-            database.ref('dismissalTracker').set(data)
-                .then(() => console.log('Data saved successfully'))
-                .catch((error) => console.error('Error saving data:', error));
+            // Сохраняем локально в любом случае
+            saveToLocalStorage(data);
+            
+            // Пытаемся сохранить в Firebase если доступно
+            if (isDatabaseAvailable) {
+                database.ref('dismissalTracker').set(data)
+                    .then(() => console.log('Data saved to Firebase'))
+                    .catch((error) => {
+                        console.error('Error saving to Firebase:', error);
+                        showDatabaseError();
+                        isDatabaseAvailable = false;
+                        useLocalStorage = true;
+                    });
+            }
         }
     
         function initDefaultData() {
-            currentDays = 3;
-            maxDays = 116;
+            currentDays = 0;
+            maxDays = 0;
             lastDismissalDate = new Date();
-            lastDismissalDate.setDate(lastDismissalDate.getDate() - 3);
             saveData();
+        }
+    
+        // === ЛОКАЛЬНОЕ ХРАНИЛИЩЕ ===
+    
+        function saveToLocalStorage(data) {
+            localData = data;
+            localStorage.setItem('dismissalTrackerLocal', JSON.stringify(data));
+        }
+    
+        function loadFromLocalStorage() {
+            const saved = localStorage.getItem('dismissalTrackerLocal');
+            if (saved) {
+                const data = JSON.parse(saved);
+                currentDays = data.currentDays || 0;
+                maxDays = data.maxDays || 0;
+                lastDismissalDate = new Date(data.lastDismissalDate || Date.now());
+                
+                updateCounterFromDates();
+                updateDisplay();
+                console.log('Loaded from local storage');
+            } else {
+                initDefaultData();
+            }
+            useLocalStorage = true;
         }
     
         // === ЛОКАЛЬНОЕ ХРАНЕНИЕ ТЕМЫ ===
@@ -621,7 +738,7 @@
             isDarkTheme = !isDarkTheme;
             document.body.classList.toggle('dark-theme', isDarkTheme);
             updateThemeIcons();
-            saveTheme(); // Сохраняем только локально
+            saveTheme();
         }
     
         function updateThemeIcons() {
@@ -641,7 +758,43 @@
             }
         }
     
-        // === СУЩЕСТВУЮЩИЕ ФУНКЦИИ ===
+        // === УВЕДОМЛЕНИЯ О БД ===
+    
+        function showDatabaseError() {
+            isDatabaseAvailable = false;
+            const notification = document.getElementById('db-notification');
+            notification.classList.add('show');
+            
+            // Автоматически скрыть через 10 секунд
+            setTimeout(() => {
+                hideDatabaseError();
+            }, 10000);
+        }
+    
+        function hideDatabaseError() {
+            const notification = document.getElementById('db-notification');
+            notification.classList.remove('show');
+        }
+    
+        // === ПРОВЕРКА СОЕДИНЕНИЯ ===
+    
+        function checkDatabaseConnection() {
+            if (!isDatabaseAvailable) {
+                // Пытаемся переподключиться
+                const dataRef = database.ref('.info/connected');
+                dataRef.on('value', (snapshot) => {
+                    if (snapshot.val() === true && useLocalStorage) {
+                        // Соединение восстановлено - синхронизируем данные
+                        isDatabaseAvailable = true;
+                        useLocalStorage = false;
+                        hideDatabaseError();
+                        saveData(); // Синхронизируем локальные данные с БД
+                    }
+                });
+            }
+        }
+    
+        // === ОСНОВНЫЕ ФУНКЦИИ ===
     
         function updateCounterFromDates() {
             const today = new Date();
@@ -651,7 +804,7 @@
             
             if (currentDays > maxDays) {
                 maxDays = currentDays;
-                saveData(); // Сохраняем новый рекорд
+                saveData();
             }
         }
     
@@ -672,13 +825,11 @@
             }
         }
     
-        // Функция для получения дня недели
         function getDayOfWeek(date) {
             const days = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
             return days[date.getDay()];
         }
     
-        // Функция для обновления времени
         function updateTime() {
             const now = new Date();
             
@@ -696,15 +847,12 @@
             document.getElementById('full-time').textContent = fullTimeString;
         }
     
-        // Обновление отображения
         function updateDisplay() {
             document.getElementById('current-days').textContent = currentDays;
             document.getElementById('max-days').textContent = maxDays;
-            
             document.getElementById('last-dismissal').textContent = formatDate(lastDismissalDate);
         }
     
-        // Форматирование даты
         function formatDate(date) {
             const options = { day: 'numeric', month: 'long', year: 'numeric' };
             return date.toLocaleDateString('ru-RU', options);
@@ -793,7 +941,6 @@
         document.getElementById('edit-date-btn').addEventListener('click', openDateModal);
         document.getElementById('theme-switch').addEventListener('change', toggleTheme);
     
-        // Закрытие модальных окон
         window.addEventListener('click', function(event) {
             const editModal = document.getElementById('editModal');
             const dateModal = document.getElementById('dateModal');
@@ -804,11 +951,12 @@
     
         // === ИНИЦИАЛИЗАЦИЯ ===
         document.addEventListener('DOMContentLoaded', function() {
-            loadTheme(); // Загружаем тему ДО данных
+            loadTheme();
             loadData();
             updateTime();
             setInterval(updateTime, 1000);
             setInterval(checkAutoUpdate, 60000);
+            setInterval(checkDatabaseConnection, 30000);
         });
     </script>
 </body>
