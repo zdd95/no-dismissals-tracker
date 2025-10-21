@@ -663,6 +663,97 @@
             margin-top: 10px;
         }
 
+        /* Стили для информационной модалки */
+        .info-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1004;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .info-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+        }
+        
+        .dark-theme .info-content {
+            background-color: #2d2d2d;
+            color: #ffffff;
+        }
+        
+        .info-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        
+        .info-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        
+        .dark-theme .info-title {
+            color: #ffffff;
+        }
+        
+        .info-text {
+            margin-bottom: 20px;
+            line-height: 1.5;
+            color: #555;
+        }
+        
+        .dark-theme .info-text {
+            color: #e0e0e0;
+        }
+        
+        .highlight {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1.2rem;
+            margin: 10px 0;
+            display: inline-block;
+        }
+        
+        .info-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .info-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            min-width: 120px;
+        }
+        
+        .info-ok-btn {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .info-ok-btn:hover {
+            background-color: #2980b9;
+        }
+
         @keyframes slideIn {
             from {
                 transform: translateX(100%);
@@ -736,6 +827,10 @@
                 width: 100%;
                 gap: 5px;
             }
+
+            .info-buttons {
+                flex-direction: column;
+            }
         }
         
         @media (max-width: 600px) {
@@ -793,6 +888,26 @@
                     <input type="password" id="register-password" placeholder="Пароль (мин. 6 символов)">
                 </div>
                 <button class="save-btn" onclick="register()">Зарегистрироваться</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Информационное модальное окно -->
+    <div class="info-modal" id="info-modal">
+        <div class="info-content">
+            <div class="info-icon" id="info-icon">🎉</div>
+            <h2 class="info-title" id="info-title">Новый рекорд!</h2>
+            <div class="info-text" id="info-text">
+                Текущая серия дней без увольнений превысила максимальную зафиксированную серию!
+            </div>
+            <div class="highlight" id="info-highlight">
+                Текущая серия: <span id="info-current-days">0</span> дней
+            </div>
+            <div class="info-text">
+                Максимальная серия будет обновлена администратором при следующем входе в систему.
+            </div>
+            <div class="info-buttons">
+                <button class="info-btn info-ok-btn" onclick="closeInfoModal()">Понятно</button>
             </div>
         </div>
     </div>
@@ -922,6 +1037,7 @@
         let currentEditType = '';
         let isDarkTheme = false;
         let isDatabaseAvailable = true;
+        let lastShownCurrentDays = 0; // Для отслеживания показа модалки
         
         // Список администраторов
         const ADMIN_USERS = ["zhambal.dashidondokov@shkulev.ru"];
@@ -935,6 +1051,11 @@
                     updateAuthUI(user);
                     const isAdmin = checkUserAccess(user);
                     showAuthStatus(user, isAdmin);
+                    
+                    // При входе администратора проверяем и обновляем максимальную серию
+                    if (isAdmin) {
+                        checkAndUpdateMaxDays();
+                    }
                 } else {
                     console.log('User not logged in - read only mode');
                     updateAuthUI(null);
@@ -1140,11 +1261,62 @@
             const currentDays = calculateCurrentDays();
             document.getElementById('current-days').textContent = currentDays;
             
-            // Автоматически обновляем максимальную серию если текущая больше
-            if (currentDays > maxDays) {
+            // Проверяем, нужно ли показать модалку о новом рекорде
+            checkForNewRecord(currentDays);
+            
+            // Автоматически обновляем максимальную серию если текущая больше (только для админов)
+            const user = auth.currentUser;
+            if (currentDays > maxDays && user && ADMIN_USERS.includes(user.email)) {
                 maxDays = currentDays;
                 saveData();
             }
+        }
+        
+        function checkForNewRecord(currentDays) {
+            // Показываем модалку только если:
+            // 1. Текущая серия больше максимальной
+            // 2. Это новое значение (не показываем повторно для того же значения)
+            // 3. Пользователь не администратор (админы сразу обновляют данные)
+            const user = auth.currentUser;
+            const isAdmin = user && ADMIN_USERS.includes(user.email);
+            
+            if (currentDays > maxDays && currentDays !== lastShownCurrentDays && !isAdmin) {
+                showInfoModal(currentDays);
+                lastShownCurrentDays = currentDays;
+            }
+        }
+        
+        function checkAndUpdateMaxDays() {
+            // Функция для администратора - проверяет и обновляет максимальную серию
+            const currentDays = calculateCurrentDays();
+            if (currentDays > maxDays) {
+                maxDays = currentDays;
+                saveData();
+                
+                // Показываем уведомление для администратора
+                showAdminUpdateNotification(currentDays);
+            }
+        }
+        
+        function showAdminUpdateNotification(currentDays) {
+            const authStatus = document.getElementById('auth-status');
+            authStatus.className = 'auth-status admin';
+            authStatus.textContent = `✅ Максимальная серия обновлена до ${currentDays} дней`;
+            authStatus.classList.add('show');
+            setTimeout(() => {
+                authStatus.classList.remove('show');
+            }, 5000);
+        }
+
+        // === ИНФОРМАЦИОННАЯ МОДАЛКА ===
+        
+        function showInfoModal(currentDays) {
+            document.getElementById('info-current-days').textContent = currentDays;
+            document.getElementById('info-modal').style.display = 'flex';
+        }
+        
+        function closeInfoModal() {
+            document.getElementById('info-modal').style.display = 'none';
         }
 
         // === FIREBASE DATABASE ФУНКЦИИ ===
@@ -1393,10 +1565,12 @@
             const editModal = document.getElementById('editModal');
             const dateModal = document.getElementById('dateModal');
             const authModal = document.getElementById('auth-modal');
+            const infoModal = document.getElementById('info-modal');
             
             if (event.target === editModal) closeEditModal();
             if (event.target === dateModal) closeDateModal();
             if (event.target === authModal) document.getElementById('auth-modal').style.display = 'none';
+            if (event.target === infoModal) closeInfoModal();
         });
 
         // === ИНИЦИАЛИЗАЦИЯ ===
