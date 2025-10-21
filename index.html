@@ -902,11 +902,20 @@
             notification.classList.remove('show');
         }
 
-        // === ОСНОВНЫЕ ФУНКЦИИ ===
+        // === ОСНОВНЫЕ ФУНКЦИИ (UTC ВЕРСИЯ) ===
     
         function updateCounterFromDates() {
-            const today = new Date();
-            const daysSinceLastDismissal = Math.floor((today - lastDismissalDate) / (1000 * 60 * 60 * 24));
+            const now = new Date();
+            
+            // Используем UTC для корректного расчета дней
+            const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+            const lastDismissalUTC = Date.UTC(
+                lastDismissalDate.getUTCFullYear(), 
+                lastDismissalDate.getUTCMonth(), 
+                lastDismissalDate.getUTCDate()
+            );
+            
+            const daysSinceLastDismissal = Math.floor((todayUTC - lastDismissalUTC) / (1000 * 60 * 60 * 24));
             
             currentDays = daysSinceLastDismissal;
             
@@ -922,6 +931,20 @@
             lastDismissalDate.setDate(today.getDate() - currentDays);
         }
     
+        function checkAutoUpdate() {
+            const now = new Date();
+            
+            // Используем UTC время для проверки
+            const currentHourUTC = now.getUTCHours();
+            const currentMinuteUTC = now.getUTCMinutes();
+            
+            // Проверяем, наступил ли новый день по UTC (00:01 UTC)
+            if (currentHourUTC === 0 && currentMinuteUTC >= 1) {
+                updateCounterFromDates();
+                updateDisplay();
+            }
+        }
+    
         function getDayOfWeek(date) {
             const days = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
             return days[date.getDay()];
@@ -930,6 +953,7 @@
         function updateTime() {
             const now = new Date();
             
+            // Отображаем локальное время для пользователя
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
@@ -1079,6 +1103,8 @@
             loadData();
             updateTime();
             setInterval(updateTime, 1000);
+            // Запускаем проверку автообновления каждую минуту
+            setInterval(checkAutoUpdate, 60000);
         });
     </script>
 </body>
