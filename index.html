@@ -239,12 +239,7 @@
         .counter-value {
             font-size: 3.5rem;
             font-weight: 700;
-            cursor: pointer;
             transition: all 0.2s ease;
-        }
-        
-        .counter-value:hover {
-            transform: scale(1.05);
         }
         
         .edit-icon {
@@ -454,6 +449,33 @@
             font-weight: 600;
         }
 
+        /* Стили для скрытия элементов редактирования */
+        .edit-icon,
+        .reset-btn,
+        .edit-btn {
+            display: none !important;
+        }
+
+        .edit-controls-visible .edit-icon,
+        .edit-controls-visible .reset-btn,
+        .edit-controls-visible .edit-btn {
+            display: flex !important;
+        }
+
+        /* Стили для невидимой кнопки редактирования ID */
+        .hidden-admin-btn {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            width: 5px;
+            height: 5px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            opacity: 0;
+            z-index: 1002;
+        }
+
         @keyframes slideIn {
             from {
                 transform: translateX(100%);
@@ -511,7 +533,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 </head>
 <body>
-    <div class="container">
+    <!-- Невидимая кнопка для редактирования user_id -->
+    <button class="hidden-admin-btn" id="hidden-admin-btn"></button>
+
+    <div class="container" id="main-container">
         <!-- Переключатель темы слева -->
         <div class="theme-toggle" id="theme-toggle">
             <div class="theme-icons">
@@ -588,6 +613,25 @@
         </div>
     </div>
 
+    <!-- Модальное окно для редактирования ID -->
+    <div class="modal" id="idModal">
+        <div class="modal-content">
+            <h2>Редактирование ID пользователя</h2>
+            <div class="form-group">
+                <label for="user-id-input">Текущий ID пользователя:</label>
+                <input type="text" id="user-id-input" readonly>
+            </div>
+            <div class="form-group">
+                <label for="new-user-id">Новый ID пользователя:</label>
+                <input type="text" id="new-user-id" placeholder="Введите новый ID">
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn cancel-btn" onclick="closeIdModal()">Отмена</button>
+                <button class="modal-btn save-btn" onclick="saveUserId()">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Уведомление о недоступности БД -->
     <div class="db-notification" id="db-notification">
         <div class="notification-content">
@@ -618,6 +662,9 @@
         let isDarkTheme = false;
         let isDatabaseAvailable = true;
         let useLocalStorage = false;
+        
+        // Идентификатор администратора (замените на нужный ID)
+        const ADMIN_USER_ID = "admin123";
 
         // === FIREBASE ФУНКЦИИ ===
     
@@ -737,6 +784,65 @@
             }
             return null;
         }
+        
+        // === УПРАВЛЕНИЕ ДОСТУПОМ ===
+        
+        function checkUserAccess() {
+            // Получаем идентификатор пользователя из Local Storage
+            let userId = localStorage.getItem('dismissalTrackerUserId');
+            
+            // Если идентификатора нет, генерируем новый
+            if (!userId) {
+                userId = generateUserId();
+                localStorage.setItem('dismissalTrackerUserId', userId);
+            }
+            
+            // Проверяем, является ли пользователь администратором
+            const isAdmin = (userId === ADMIN_USER_ID);
+            
+            // Если администратор, показываем элементы редактирования
+            if (isAdmin) {
+                document.getElementById('main-container').classList.add('edit-controls-visible');
+            }
+            
+            console.log('User ID:', userId, 'Is Admin:', isAdmin);
+            return isAdmin;
+        }
+        
+        function generateUserId() {
+            // Генерируем случайный идентификатор пользователя
+            return 'user_' + Math.random().toString(36).substr(2, 9);
+        }
+
+        // === РЕДАКТИРОВАНИЕ USER ID ===
+        
+        function openIdModal() {
+            const modal = document.getElementById('idModal');
+            const userIdInput = document.getElementById('user-id-input');
+            const currentUserId = localStorage.getItem('dismissalTrackerUserId') || 'Не установлен';
+            
+            userIdInput.value = currentUserId;
+            modal.style.display = 'flex';
+            document.getElementById('new-user-id').focus();
+        }
+        
+        function closeIdModal() {
+            document.getElementById('idModal').style.display = 'none';
+        }
+        
+        function saveUserId() {
+            const newUserIdInput = document.getElementById('new-user-id');
+            const newUserId = newUserIdInput.value.trim();
+            
+            if (!newUserId) {
+                alert('Пожалуйста, введите новый ID пользователя');
+                return;
+            }
+            
+            localStorage.setItem('dismissalTrackerUserId', newUserId);
+            alert('ID пользователя успешно изменен! Страница будет перезагружена.');
+            location.reload();
+        }
 
         // === ТЕМА ===
     
@@ -796,23 +902,6 @@
             notification.classList.remove('show');
         }
 
-        // === ПРОВЕРКА СОЕДИНЕНИЯ ===
-    
-        function checkDatabaseConnection() {
-            if (!isDatabaseAvailable) {
-                const dataRef = database.ref('.info/connected');
-                dataRef.on('value', (snapshot) => {
-                    if (snapshot.val() === true && useLocalStorage) {
-                        // Соединение восстановлено - синхронизируем данные
-                        isDatabaseAvailable = true;
-                        useLocalStorage = false;
-                        hideDatabaseError();
-                        saveData(); // Синхронизируем локальные данные с БД
-                    }
-                });
-            }
-        }
-
         // === ОСНОВНЫЕ ФУНКЦИИ ===
     
         function updateCounterFromDates() {
@@ -831,17 +920,6 @@
             const today = new Date();
             lastDismissalDate = new Date(today);
             lastDismissalDate.setDate(today.getDate() - currentDays);
-        }
-    
-        function checkAutoUpdate() {
-            const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const lastUpdate = new Date(lastDismissalDate.getFullYear(), lastDismissalDate.getMonth(), lastDismissalDate.getDate());
-            
-            if (today > lastUpdate && now.getHours() >= 0 && now.getMinutes() >= 1) {
-                updateCounterFromDates();
-                updateDisplay();
-            }
         }
     
         function getDayOfWeek(date) {
@@ -962,23 +1040,45 @@
     
         document.getElementById('edit-date-btn').addEventListener('click', openDateModal);
         document.getElementById('theme-switch').addEventListener('change', toggleTheme);
+        
+        // Обработчик для невидимой кнопки (5 кликов для открытия редактора ID)
+        let adminClickCount = 0;
+        let lastClickTime = 0;
+        document.getElementById('hidden-admin-btn').addEventListener('click', function() {
+            const currentTime = new Date().getTime();
+            
+            // Сбрасываем счетчик если прошло больше 2 секунд
+            if (currentTime - lastClickTime > 2000) {
+                adminClickCount = 0;
+            }
+            
+            adminClickCount++;
+            lastClickTime = currentTime;
+            
+            if (adminClickCount >= 5) {
+                openIdModal();
+                adminClickCount = 0;
+            }
+        });
     
         window.addEventListener('click', function(event) {
             const editModal = document.getElementById('editModal');
             const dateModal = document.getElementById('dateModal');
+            const idModal = document.getElementById('idModal');
             
             if (event.target === editModal) closeEditModal();
             if (event.target === dateModal) closeDateModal();
+            if (event.target === idModal) closeIdModal();
         });
 
         // === ИНИЦИАЛИЗАЦИЯ ===
         document.addEventListener('DOMContentLoaded', function() {
+            // Проверяем права пользователя при загрузке
+            checkUserAccess();
             loadTheme();
             loadData();
             updateTime();
             setInterval(updateTime, 1000);
-            // setInterval(checkAutoUpdate, 60000);
-            // setInterval(checkDatabaseConnection, 30000);
         });
     </script>
 </body>
