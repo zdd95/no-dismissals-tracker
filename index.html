@@ -44,10 +44,18 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
         }
         
-        .time-display {
+        .header-controls {
             position: absolute;
             top: -60px;
+            left: 0;
             right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 48px;
+        }
+        
+        .time-display {
             background-color: white;
             color: #2c3e50;
             padding: 12px 20px;
@@ -59,6 +67,7 @@
             height: 48px;
             display: flex;
             align-items: center;
+            order: 3;
         }
         
         .dark-theme .time-display {
@@ -69,9 +78,6 @@
         }
         
         .theme-toggle {
-            position: absolute;
-            top: -60px;
-            left: 0;
             background-color: white;
             color: #2c3e50;
             padding: 8px 16px;
@@ -85,6 +91,7 @@
             align-items: center;
             gap: 10px;
             height: 48px;
+            order: 1;
         }
         
         .dark-theme .theme-toggle {
@@ -92,6 +99,46 @@
             color: #ffffff;
             border: 1px solid #444;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+        }
+        
+        .auth-buttons {
+            display: flex;
+            gap: 10px;
+            order: 2;
+        }
+        
+        .auth-btn, .logout-btn {
+            background-color: white;
+            color: #2c3e50;
+            padding: 8px 16px;
+            border-radius: 15px;
+            font-size: 1rem;
+            font-weight: 600;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            white-space: nowrap;
+        }
+        
+        .dark-theme .auth-btn, .dark-theme .logout-btn {
+            background-color: #2d2d2d;
+            color: #ffffff;
+            border: 1px solid #444;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+        }
+        
+        .auth-btn:hover {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .logout-btn:hover {
+            background-color: #e74c3c;
+            color: white;
         }
         
         .switch {
@@ -462,18 +509,158 @@
             display: flex !important;
         }
 
-        /* Стили для невидимой кнопки редактирования ID */
-        .hidden-admin-btn {
+        /* Скрываем карандаш у текущей серии */
+        .current-counter .edit-icon {
+            display: none !important;
+        }
+
+        /* Стили для аутентификации */
+        .auth-modal {
+            display: none;
             position: fixed;
-            top: 10px;
-            left: 10px;
-            width: 5px;
-            height: 5px;
-            background: transparent;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1003;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .auth-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .dark-theme .auth-content {
+            background-color: #2d2d2d;
+            color: #ffffff;
+        }
+        
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .dark-theme .auth-tabs {
+            border-bottom: 1px solid #555;
+        }
+        
+        .auth-tab {
+            flex: 1;
+            padding: 10px;
+            background: none;
             border: none;
             cursor: pointer;
-            opacity: 0;
+            font-weight: 600;
+            color: #7f8c8d;
+        }
+        
+        .auth-tab.active {
+            color: #3498db;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .auth-form {
+            display: none;
+        }
+        
+        .auth-form.active {
+            display: block;
+        }
+        
+        .auth-error {
+            color: #e74c3c;
+            margin: 10px 0;
+            font-size: 0.9rem;
+            display: none;
+        }
+        
+        .auth-success {
+            color: #2ecc71;
+            margin: 10px 0;
+            font-size: 0.9rem;
+            display: none;
+        }
+        
+        .auth-status {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 0.9rem;
             z-index: 1002;
+            display: none;
+            max-width: 80%;
+            text-align: center;
+            animation: slideUp 0.3s ease;
+        }
+
+        .auth-status.show {
+            display: block;
+        }
+
+        .auth-status.guest {
+            background-color: #f8f9fa;
+            color: #6c757d;
+            border: 1px solid #e9ecef;
+        }
+
+        .dark-theme .auth-status.guest {
+            background-color: #2d2d2d;
+            color: #bdc3c7;
+            border: 1px solid #444;
+        }
+
+        .auth-status.user {
+            background-color: #e8f5e8;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+
+        .dark-theme .auth-status.user {
+            background-color: #1b5e20;
+            color: #a5d6a7;
+            border: 1px solid #2e7d32;
+        }
+
+        .auth-status.admin {
+            background-color: #e3f2fd;
+            color: #1565c0;
+            border: 1px solid #bbdefb;
+        }
+
+        .dark-theme .auth-status.admin {
+            background-color: #0d47a1;
+            color: #90caf9;
+            border: 1px solid #1565c0;
+        }
+
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .admin-controls {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .admin-controls.visible {
+            display: block;
+        }
+
+        .admin-controls .buttons {
+            margin-top: 10px;
         }
 
         @keyframes slideIn {
@@ -486,8 +673,34 @@
                 opacity: 1;
             }
         }
+
+        @keyframes slideUp {
+            from {
+                transform: translateX(-50%) translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
         
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
+            .header-controls {
+                flex-direction: column;
+                gap: 10px;
+                height: auto;
+                position: relative;
+                top: 0;
+                margin-bottom: 20px;
+            }
+            
+            .theme-toggle, .auth-buttons, .time-display {
+                position: relative;
+                width: 100%;
+                justify-content: center;
+            }
+            
             .counter-container {
                 flex-direction: column;
             }
@@ -504,15 +717,6 @@
                 flex-direction: column;
             }
             
-            .time-display, .theme-toggle {
-                position: relative;
-                top: auto;
-                right: auto;
-                left: auto;
-                margin: 0 auto 20px auto;
-                display: inline-block;
-            }
-            
             .container {
                 margin-top: 20px;
             }
@@ -526,32 +730,103 @@
                 left: 10px;
                 max-width: none;
             }
+
+            .auth-buttons {
+                flex-direction: column;
+                width: 100%;
+                gap: 5px;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .header-controls {
+                flex-direction: column;
+                gap: 10px;
+                height: auto;
+            }
+            
+            .theme-toggle, .auth-buttons, .time-display {
+                width: 100%;
+                justify-content: center;
+            }
         }
     </style>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
 </head>
 <body>
-    <!-- Невидимая кнопка для редактирования user_id -->
-    <button class="hidden-admin-btn" id="hidden-admin-btn"></button>
-
-    <div class="container" id="main-container">
-        <!-- Переключатель темы слева -->
-        <div class="theme-toggle" id="theme-toggle">
-            <div class="theme-icons">
-                <div class="theme-icon sun-icon active"></div>
-                <label class="switch">
-                    <input type="checkbox" id="theme-switch">
-                    <span class="slider"></span>
-                </label>
-                <div class="theme-icon moon-icon inactive"></div>
+    <!-- Модальное окно аутентификации -->
+    <div class="auth-modal" id="auth-modal">
+        <div class="auth-content">
+            <h2>Вход в систему</h2>
+            <div class="auth-tabs">
+                <button class="auth-tab active" onclick="showAuthForm('login')">Вход</button>
+                <button class="auth-tab" onclick="showAuthForm('register')">Регистрация</button>
+            </div>
+            
+            <div class="auth-error" id="auth-error"></div>
+            <div class="auth-success" id="auth-success"></div>
+            
+            <!-- Форма входа -->
+            <div class="auth-form active" id="login-form">
+                <div class="form-group">
+                    <label for="login-email">Email:</label>
+                    <input type="email" id="login-email" placeholder="Ваш email">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Пароль:</label>
+                    <input type="password" id="login-password" placeholder="Ваш пароль">
+                </div>
+                <button class="save-btn" onclick="login()">Войти</button>
+            </div>
+            
+            <!-- Форма регистрации -->
+            <div class="auth-form" id="register-form">
+                <div class="form-group">
+                    <label for="register-email">Email:</label>
+                    <input type="email" id="register-email" placeholder="Ваш email">
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Пароль:</label>
+                    <input type="password" id="register-password" placeholder="Пароль (мин. 6 символов)">
+                </div>
+                <button class="save-btn" onclick="register()">Зарегистрироваться</button>
             </div>
         </div>
+    </div>
 
-        <!-- Блок с временем справа -->
-        <div class="time-display">
-            <span class="time-value" id="full-time">ПН, 20.10.2025, 16:02:10</span>
+    <!-- Всплывающие уведомления о статусе авторизации -->
+    <div class="auth-status guest" id="auth-status">
+        🔒 Режим просмотра. Войдите для редактирования данных.
+    </div>
+
+    <div class="container" id="main-container">
+        <!-- Общий контейнер для верхних элементов -->
+        <div class="header-controls">
+            <!-- Переключатель темы слева -->
+            <div class="theme-toggle" id="theme-toggle">
+                <div class="theme-icons">
+                    <div class="theme-icon sun-icon active"></div>
+                    <label class="switch">
+                        <input type="checkbox" id="theme-switch">
+                        <span class="slider"></span>
+                    </label>
+                    <div class="theme-icon moon-icon inactive"></div>
+                </div>
+            </div>
+
+            <!-- Кнопки авторизации по центру -->
+            <div class="auth-buttons" id="auth-buttons">
+                <button class="auth-btn" id="auth-btn">Войти / Зарегистрироваться</button>
+                <button class="logout-btn" id="logout-btn" style="display: none;">Выйти</button>
+            </div>
+
+            <!-- Блок с временем справа -->
+            <div class="time-display">
+                <span class="time-value" id="full-time">ПН, 20.10.2025, 16:02:10</span>
+            </div>
         </div>
 
         <h1>Дни без увольнений</h1>
@@ -562,7 +837,7 @@
                 <div class="counter-label">Текущая серия</div>
                 <div class="counter-value" id="current-days">0</div>
                 <div class="counter-label">дней</div>
-                <div class="edit-icon" onclick="openEditModal('current')">✏️</div>
+                <!-- Убрали карандаш редактирования для текущей серии -->
             </div>
             
             <div class="counter max-counter">
@@ -575,18 +850,22 @@
         
         <div class="date-info">
             <p>Последнее увольнение: <span id="last-dismissal">0</span></p>
+            <p style="margin-top: 10px; font-size: 0.9rem; color: #888;" id="last-updated-info"></p>
         </div>
         
-        <div class="buttons">
-            <button class="reset-btn" id="reset-btn">Сбросить счётчик</button>
-            <button class="edit-btn" id="edit-date-btn">Изменить дату</button>
+        <!-- Блок управления для администраторов -->
+        <div class="admin-controls" id="admin-controls">
+            <div class="buttons">
+                <button class="reset-btn" id="reset-btn">Сбросить счётчик</button>
+                <button class="edit-btn" id="edit-date-btn">Изменить дату</button>
+            </div>
         </div>
     </div>
 
-    <!-- Модальное окно для редактирования счетчиков -->
+    <!-- Модальное окно для редактирования максимальной серии -->
     <div class="modal" id="editModal">
         <div class="modal-content">
-            <h2 id="modal-title">Редактирование данных</h2>
+            <h2 id="modal-title">Редактирование максимальной серии</h2>
             <div class="form-group">
                 <label for="edit-value">Новое значение:</label>
                 <input type="number" id="edit-value" min="0" step="1">
@@ -609,25 +888,6 @@
             <div class="modal-buttons">
                 <button class="modal-btn cancel-btn" onclick="closeDateModal()">Отмена</button>
                 <button class="modal-btn save-btn" onclick="saveDates()">Сохранить</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Модальное окно для редактирования ID -->
-    <div class="modal" id="idModal">
-        <div class="modal-content">
-            <h2>Редактирование ID пользователя</h2>
-            <div class="form-group">
-                <label for="user-id-input">Текущий ID пользователя:</label>
-                <input type="text" id="user-id-input" readonly>
-            </div>
-            <div class="form-group">
-                <label for="new-user-id">Новый ID пользователя:</label>
-                <input type="text" id="new-user-id" placeholder="Введите новый ID">
-            </div>
-            <div class="modal-buttons">
-                <button class="modal-btn cancel-btn" onclick="closeIdModal()">Отмена</button>
-                <button class="modal-btn save-btn" onclick="saveUserId()">Сохранить</button>
             </div>
         </div>
     </div>
@@ -655,98 +915,294 @@
         // Инициализация Firebase
         const app = firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+        const auth = firebase.auth();
     
         // Глобальные переменные
-        let currentDays, maxDays, lastDismissalDate;
+        let maxDays, lastDismissalDate;
         let currentEditType = '';
         let isDarkTheme = false;
         let isDatabaseAvailable = true;
-        let useLocalStorage = false;
         
-        // Идентификатор администратора (замените на нужный ID)
-        const ADMIN_USER_ID = "admin123";
+        // Список администраторов
+        const ADMIN_USERS = ["zhambal.dashidondokov@shkulev.ru"];
 
-        // === FIREBASE ФУНКЦИИ ===
-    
-        function loadData() {
-            // Сначала загружаем из Local Storage для быстрого отображения
-            const localData = loadFromLocalStorage();
-            if (localData) {
-                currentDays = localData.currentDays || 0;
-                maxDays = localData.maxDays || 0;
-                lastDismissalDate = new Date(localData.lastDismissalDate || Date.now());
-                updateDisplay();
+        // === FIREBASE AUTHENTICATION ===
+        
+        function initAuth() {
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    console.log('User logged in:', user.email);
+                    updateAuthUI(user);
+                    const isAdmin = checkUserAccess(user);
+                    showAuthStatus(user, isAdmin);
+                } else {
+                    console.log('User not logged in - read only mode');
+                    updateAuthUI(null);
+                    showAuthStatus(null, false);
+                }
+                loadData();
+            });
+        }
+        
+        function updateAuthUI(user) {
+            const authBtn = document.getElementById('auth-btn');
+            const logoutBtn = document.getElementById('logout-btn');
+            const adminControls = document.getElementById('admin-controls');
+            
+            if (user) {
+                authBtn.style.display = 'none';
+                logoutBtn.style.display = 'block';
+                
+                const isAdmin = checkUserAccess(user);
+                if (isAdmin) {
+                    adminControls.classList.add('visible');
+                } else {
+                    adminControls.classList.remove('visible');
+                }
+            } else {
+                authBtn.style.display = 'block';
+                logoutBtn.style.display = 'none';
+                adminControls.classList.remove('visible');
+            }
+            document.getElementById('auth-modal').style.display = 'none';
+        }
+        
+        function showAuthStatus(user, isAdmin) {
+            const authStatus = document.getElementById('auth-status');
+            
+            if (!user) {
+                authStatus.className = 'auth-status guest';
+                authStatus.textContent = '🔒 Режим просмотра. Войдите для редактирования данных.';
+            } else if (isAdmin) {
+                authStatus.className = 'auth-status admin';
+                authStatus.textContent = `✅ Вы вошли как администратор (${user.email}). Доступно редактирование.`;
+            } else {
+                authStatus.className = 'auth-status user';
+                authStatus.textContent = `👤 Вы вошли как пользователь (${user.email}). Только просмотр.`;
             }
             
-            // Затем пытаемся загрузить из Firebase
+            // Показываем уведомление на 5 секунд
+            authStatus.classList.add('show');
+            setTimeout(() => {
+                authStatus.classList.remove('show');
+            }, 5000);
+        }
+        
+        function showAuthForm(formType) {
+            document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
+            document.querySelectorAll('.auth-tab').forEach(tab => tab.classList.remove('active'));
+            
+            if (formType === 'login') {
+                document.getElementById('login-form').classList.add('active');
+                document.querySelectorAll('.auth-tab')[0].classList.add('active');
+            } else {
+                document.getElementById('register-form').classList.add('active');
+                document.querySelectorAll('.auth-tab')[1].classList.add('active');
+            }
+            hideAuthMessages();
+        }
+        
+        function openAuthModal() {
+            document.getElementById('auth-modal').style.display = 'flex';
+            showAuthForm('login');
+        }
+        
+        function login() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            if (!email || !password) {
+                showAuthError('Заполните все поля');
+                return;
+            }
+            
+            setAuthLoading(true);
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    showAuthSuccess('Вход выполнен успешно!');
+                    setAuthLoading(false);
+                    setTimeout(() => document.getElementById('auth-modal').style.display = 'none', 1000);
+                })
+                .catch((error) => {
+                    showAuthError(getAuthErrorMessage(error));
+                    setAuthLoading(false);
+                });
+        }
+        
+        function register() {
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            
+            if (!email || !password) {
+                showAuthError('Заполните все поля');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showAuthError('Пароль должен содержать минимум 6 символов');
+                return;
+            }
+            
+            setAuthLoading(true);
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    showAuthSuccess('Регистрация выполнена успешно!');
+                    setAuthLoading(false);
+                    setTimeout(() => document.getElementById('auth-modal').style.display = 'none', 1000);
+                })
+                .catch((error) => {
+                    showAuthError(getAuthErrorMessage(error));
+                    setAuthLoading(false);
+                });
+        }
+        
+        function logout() {
+            auth.signOut().catch((error) => console.error('Error logging out:', error));
+        }
+        
+        function getAuthErrorMessage(error) {
+            switch (error.code) {
+                case 'auth/invalid-email': return 'Неверный формат email';
+                case 'auth/user-disabled': return 'Пользователь заблокирован';
+                case 'auth/user-not-found': return 'Пользователь не найден';
+                case 'auth/wrong-password': return 'Неверный пароль';
+                case 'auth/email-already-in-use': return 'Email уже используется';
+                case 'auth/weak-password': return 'Пароль слишком слабый';
+                default: return error.message;
+            }
+        }
+        
+        function showAuthError(message) {
+            document.getElementById('auth-error').textContent = message;
+            document.getElementById('auth-error').style.display = 'block';
+            document.getElementById('auth-success').style.display = 'none';
+        }
+        
+        function showAuthSuccess(message) {
+            document.getElementById('auth-success').textContent = message;
+            document.getElementById('auth-success').style.display = 'block';
+            document.getElementById('auth-error').style.display = 'none';
+        }
+        
+        function hideAuthMessages() {
+            document.getElementById('auth-error').style.display = 'none';
+            document.getElementById('auth-success').style.display = 'none';
+        }
+        
+        function setAuthLoading(loading) {
+            const buttons = document.querySelectorAll('.auth-form .save-btn');
+            buttons.forEach(button => {
+                button.disabled = loading;
+                button.textContent = loading ? 'Загрузка...' : (button.closest('#login-form') ? 'Войти' : 'Зарегистрироваться');
+            });
+        }
+
+        // === УПРАВЛЕНИЕ ДОСТУПОМ ===
+        
+        function checkUserAccess(user) {
+            const isAdmin = ADMIN_USERS.includes(user.email);
+            if (isAdmin) {
+                document.getElementById('main-container').classList.add('edit-controls-visible');
+            } else {
+                document.getElementById('main-container').classList.remove('edit-controls-visible');
+            }
+            return isAdmin;
+        }
+        
+        function requireAdmin() {
+            const user = auth.currentUser;
+            if (!user) {
+                alert('Для выполнения этого действия необходимо войти в систему');
+                openAuthModal();
+                return false;
+            }
+            if (!ADMIN_USERS.includes(user.email)) {
+                alert('У вас недостаточно прав для выполнения этого действия');
+                return false;
+            }
+            return true;
+        }
+
+        // === ОСНОВНЫЕ ФУНКЦИИ ===
+        
+        function calculateCurrentDays() {
+            const now = new Date();
+            const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+            const lastDismissalUTC = Date.UTC(
+                lastDismissalDate.getUTCFullYear(), 
+                lastDismissalDate.getUTCMonth(), 
+                lastDismissalDate.getUTCDate()
+            );
+            return Math.floor((todayUTC - lastDismissalUTC) / (1000 * 60 * 60 * 24));
+        }
+        
+        function updateCurrentDays() {
+            const currentDays = calculateCurrentDays();
+            document.getElementById('current-days').textContent = currentDays;
+            
+            // Автоматически обновляем максимальную серию если текущая больше
+            if (currentDays > maxDays) {
+                maxDays = currentDays;
+                saveData();
+            }
+        }
+
+        // === FIREBASE DATABASE ФУНКЦИИ ===
+    
+        function loadData() {
             const dataRef = database.ref('dismissalTracker');
             
             const dbTimeout = setTimeout(() => {
-                if (isDatabaseAvailable) {
-                    showDatabaseError();
-                    // Если БД недоступна, продолжаем использовать LS данные
-                    useLocalStorage = true;
-                }
+                if (isDatabaseAvailable) showDatabaseError();
             }, 5000);
             
             dataRef.on('value', (snapshot) => {
                 clearTimeout(dbTimeout);
-                
                 if (!isDatabaseAvailable) {
                     hideDatabaseError();
                     isDatabaseAvailable = true;
-                    useLocalStorage = false;
                 }
                 
                 const firebaseData = snapshot.val();
-                
                 if (firebaseData) {
-                    // ПРИОРИТЕТ У ДАННЫХ ИЗ БД - всегда используем данные из Firebase
-                    console.log('Using Firebase data (priority)');
-                    currentDays = firebaseData.currentDays || 0;
+                    console.log('Using Firebase data');
                     maxDays = firebaseData.maxDays || 0;
                     lastDismissalDate = new Date(firebaseData.lastDismissalDate || Date.now());
                     
-                    updateCounterFromDates();
+                    updateCurrentDays();
                     updateDisplay();
                     
-                    // Обновляем локальное хранилище данными из БД
-                    saveToLocalStorage({
-                        currentDays: currentDays,
-                        maxDays: maxDays,
-                        lastDismissalDate: lastDismissalDate.getTime()
-                    });
+                    if (firebaseData.lastUpdatedBy) {
+                        document.getElementById('last-updated-info').textContent = 
+                            `Последнее изменение: ${firebaseData.lastUpdatedBy}`;
+                    }
                 } else {
-                    // Данных в Firebase нет
-                    if (localData) {
-                        // Сохраняем локальные данные в Firebase
-                        console.log('Saving local data to Firebase');
-                        saveData();
-                    } else {
+                    const user = auth.currentUser;
+                    if (user && ADMIN_USERS.includes(user.email)) {
                         initDefaultData();
                     }
                 }
             }, (error) => {
-                // Ошибка подключения к БД
                 clearTimeout(dbTimeout);
                 showDatabaseError();
-                useLocalStorage = true;
-                // Продолжаем использовать LS данные (уже загружены выше)
+                isDatabaseAvailable = false;
             });
         }
     
         function saveData() {
+            const user = auth.currentUser;
+            if (!user) {
+                console.log('Cannot save: user not authenticated');
+                return;
+            }
+            
             const data = {
-                currentDays: currentDays,
                 maxDays: maxDays,
                 lastDismissalDate: lastDismissalDate.getTime(),
-                lastUpdated: Date.now()
+                lastUpdated: Date.now(),
+                lastUpdatedBy: user.email
             };
             
-            // Всегда сохраняем локально
-            saveToLocalStorage(data);
-            
-            // Пытаемся сохранить в Firebase если доступно
             if (isDatabaseAvailable) {
                 database.ref('dismissalTracker').set(data)
                     .then(() => console.log('Data saved to Firebase'))
@@ -754,94 +1210,14 @@
                         console.error('Error saving to Firebase:', error);
                         showDatabaseError();
                         isDatabaseAvailable = false;
-                        useLocalStorage = true;
                     });
             }
         }
     
         function initDefaultData() {
-            currentDays = 0;
             maxDays = 0;
             lastDismissalDate = new Date();
             saveData();
-        }
-
-        // === ЛОКАЛЬНОЕ ХРАНИЛИЩЕ ===
-    
-        function saveToLocalStorage(data) {
-            localStorage.setItem('dismissalTrackerLocal', JSON.stringify(data));
-        }
-    
-        function loadFromLocalStorage() {
-            const saved = localStorage.getItem('dismissalTrackerLocal');
-            if (saved) {
-                try {
-                    return JSON.parse(saved);
-                } catch (e) {
-                    console.error('Error parsing local storage data:', e);
-                    return null;
-                }
-            }
-            return null;
-        }
-        
-        // === УПРАВЛЕНИЕ ДОСТУПОМ ===
-        
-        function checkUserAccess() {
-            // Получаем идентификатор пользователя из Local Storage
-            let userId = localStorage.getItem('dismissalTrackerUserId');
-            
-            // Если идентификатора нет, генерируем новый
-            if (!userId) {
-                userId = generateUserId();
-                localStorage.setItem('dismissalTrackerUserId', userId);
-            }
-            
-            // Проверяем, является ли пользователь администратором
-            const isAdmin = (userId === ADMIN_USER_ID);
-            
-            // Если администратор, показываем элементы редактирования
-            if (isAdmin) {
-                document.getElementById('main-container').classList.add('edit-controls-visible');
-            }
-            
-            console.log('User ID:', userId, 'Is Admin:', isAdmin);
-            return isAdmin;
-        }
-        
-        function generateUserId() {
-            // Генерируем случайный идентификатор пользователя
-            return 'user_' + Math.random().toString(36).substr(2, 9);
-        }
-
-        // === РЕДАКТИРОВАНИЕ USER ID ===
-        
-        function openIdModal() {
-            const modal = document.getElementById('idModal');
-            const userIdInput = document.getElementById('user-id-input');
-            const currentUserId = localStorage.getItem('dismissalTrackerUserId') || 'Не установлен';
-            
-            userIdInput.value = currentUserId;
-            modal.style.display = 'flex';
-            document.getElementById('new-user-id').focus();
-        }
-        
-        function closeIdModal() {
-            document.getElementById('idModal').style.display = 'none';
-        }
-        
-        function saveUserId() {
-            const newUserIdInput = document.getElementById('new-user-id');
-            const newUserId = newUserIdInput.value.trim();
-            
-            if (!newUserId) {
-                alert('Пожалуйста, введите новый ID пользователя');
-                return;
-            }
-            
-            localStorage.setItem('dismissalTrackerUserId', newUserId);
-            alert('ID пользователя успешно изменен! Страница будет перезагружена.');
-            location.reload();
         }
 
         // === ТЕМА ===
@@ -849,7 +1225,6 @@
         function loadTheme() {
             const savedTheme = localStorage.getItem('userTheme');
             isDarkTheme = savedTheme === 'dark';
-            
             if (isDarkTheme) {
                 document.body.classList.add('dark-theme');
                 document.getElementById('theme-switch').checked = true;
@@ -871,17 +1246,12 @@
         function updateThemeIcons() {
             const sunIcon = document.querySelector('.sun-icon');
             const moonIcon = document.querySelector('.moon-icon');
-            
             if (isDarkTheme) {
-                sunIcon.classList.remove('active');
-                sunIcon.classList.add('inactive');
-                moonIcon.classList.remove('inactive');
-                moonIcon.classList.add('active');
+                sunIcon.classList.remove('active'); sunIcon.classList.add('inactive');
+                moonIcon.classList.remove('inactive'); moonIcon.classList.add('active');
             } else {
-                sunIcon.classList.remove('inactive');
-                sunIcon.classList.add('active');
-                moonIcon.classList.remove('active');
-                moonIcon.classList.add('inactive');
+                sunIcon.classList.remove('inactive'); sunIcon.classList.add('active');
+                moonIcon.classList.remove('active'); moonIcon.classList.add('inactive');
             }
         }
 
@@ -891,10 +1261,7 @@
             isDatabaseAvailable = false;
             const notification = document.getElementById('db-notification');
             notification.classList.add('show');
-            
-            setTimeout(() => {
-                hideDatabaseError();
-            }, 10000);
+            setTimeout(() => hideDatabaseError(), 10000);
         }
     
         function hideDatabaseError() {
@@ -902,47 +1269,9 @@
             notification.classList.remove('show');
         }
 
-        // === ОСНОВНЫЕ ФУНКЦИИ (UTC ВЕРСИЯ) ===
-    
-        function updateCounterFromDates() {
-            const now = new Date();
-            
-            // Используем UTC для корректного расчета дней
-            const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-            const lastDismissalUTC = Date.UTC(
-                lastDismissalDate.getUTCFullYear(), 
-                lastDismissalDate.getUTCMonth(), 
-                lastDismissalDate.getUTCDate()
-            );
-            
-            const daysSinceLastDismissal = Math.floor((todayUTC - lastDismissalUTC) / (1000 * 60 * 60 * 24));
-            
-            currentDays = daysSinceLastDismissal;
-            
-            if (currentDays > maxDays) {
-                maxDays = currentDays;
-                saveData();
-            }
-        }
-    
-        function updateDatesFromCounter() {
-            const today = new Date();
-            lastDismissalDate = new Date(today);
-            lastDismissalDate.setDate(today.getDate() - currentDays);
-        }
-    
         function checkAutoUpdate() {
-            const now = new Date();
-            
-            // Используем UTC время для проверки
-            const currentHourUTC = now.getUTCHours();
-            const currentMinuteUTC = now.getUTCMinutes();
-            
-            // Проверяем, наступил ли новый день по UTC (00:01 UTC)
-            if (currentHourUTC === 0 && currentMinuteUTC >= 1) {
-                updateCounterFromDates();
-                updateDisplay();
-            }
+            // Автоматически обновляем текущие дни каждую минуту
+            updateCurrentDays();
         }
     
         function getDayOfWeek(date) {
@@ -952,26 +1281,21 @@
     
         function updateTime() {
             const now = new Date();
-            
-            // Отображаем локальное время для пользователя
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
-            
             const day = String(now.getDate()).padStart(2, '0');
             const month = String(now.getMonth() + 1).padStart(2, '0');
             const year = now.getFullYear();
-            
             const dayOfWeek = getDayOfWeek(now);
-            
             const fullTimeString = `${dayOfWeek}, ${day}.${month}.${year}, ${hours}:${minutes}:${seconds}`;
             document.getElementById('full-time').textContent = fullTimeString;
         }
     
         function updateDisplay() {
-            document.getElementById('current-days').textContent = currentDays;
             document.getElementById('max-days').textContent = maxDays;
             document.getElementById('last-dismissal').textContent = formatDate(lastDismissalDate);
+            updateCurrentDays(); // Всегда обновляем текущие дни при обновлении дисплея
         }
     
         function formatDate(date) {
@@ -982,16 +1306,13 @@
         // === МОДАЛЬНЫЕ ОКНА ===
     
         function openEditModal(type) {
+            if (!requireAdmin()) return;
+            
             currentEditType = type;
             const modal = document.getElementById('editModal');
-            const title = document.getElementById('modal-title');
             const input = document.getElementById('edit-value');
             
-            if (type === 'current') {
-                title.textContent = 'Редактирование текущей серии';
-                input.value = currentDays;
-            } else if (type === 'max') {
-                title.textContent = 'Редактирование максимальной серии';
+            if (type === 'max') {
                 input.value = maxDays;
             }
             
@@ -1004,6 +1325,8 @@
         }
     
         function saveEdit() {
+            if (!requireAdmin()) return;
+            
             const input = document.getElementById('edit-value');
             const value = parseInt(input.value);
             
@@ -1012,10 +1335,7 @@
                 return;
             }
             
-            if (currentEditType === 'current') {
-                currentDays = value;
-                updateDatesFromCounter();
-            } else if (currentEditType === 'max') {
+            if (currentEditType === 'max') {
                 maxDays = value;
             }
             
@@ -1025,9 +1345,10 @@
         }
     
         function openDateModal() {
+            if (!requireAdmin()) return;
+            
             const modal = document.getElementById('dateModal');
             const lastDismissalInput = document.getElementById('last-dismissal-date');
-            
             lastDismissalInput.valueAsDate = lastDismissalDate;
             modal.style.display = 'flex';
         }
@@ -1037,15 +1358,15 @@
         }
     
         function saveDates() {
-            const lastDismissalInput = document.getElementById('last-dismissal-date');
+            if (!requireAdmin()) return;
             
+            const lastDismissalInput = document.getElementById('last-dismissal-date');
             if (!lastDismissalInput.value) {
                 alert('Пожалуйста, выберите дату');
                 return;
             }
             
             lastDismissalDate = new Date(lastDismissalInput.value);
-            updateCounterFromDates();
             saveData();
             updateDisplay();
             closeDateModal();
@@ -1054,8 +1375,9 @@
         // === ОБРАБОТЧИКИ СОБЫТИЙ ===
     
         document.getElementById('reset-btn').addEventListener('click', function() {
+            if (!requireAdmin()) return;
+            
             if (confirm('Вы уверены, что хотите сбросить счётчик? Это действие нельзя отменить.')) {
-                currentDays = 0;
                 lastDismissalDate = new Date();
                 saveData();
                 updateDisplay();
@@ -1063,48 +1385,27 @@
         });
     
         document.getElementById('edit-date-btn').addEventListener('click', openDateModal);
+        document.getElementById('auth-btn').addEventListener('click', openAuthModal);
+        document.getElementById('logout-btn').addEventListener('click', logout);
         document.getElementById('theme-switch').addEventListener('change', toggleTheme);
-        
-        // Обработчик для невидимой кнопки (5 кликов для открытия редактора ID)
-        let adminClickCount = 0;
-        let lastClickTime = 0;
-        document.getElementById('hidden-admin-btn').addEventListener('click', function() {
-            const currentTime = new Date().getTime();
-            
-            // Сбрасываем счетчик если прошло больше 2 секунд
-            if (currentTime - lastClickTime > 2000) {
-                adminClickCount = 0;
-            }
-            
-            adminClickCount++;
-            lastClickTime = currentTime;
-            
-            if (adminClickCount >= 5) {
-                openIdModal();
-                adminClickCount = 0;
-            }
-        });
     
         window.addEventListener('click', function(event) {
             const editModal = document.getElementById('editModal');
             const dateModal = document.getElementById('dateModal');
-            const idModal = document.getElementById('idModal');
+            const authModal = document.getElementById('auth-modal');
             
             if (event.target === editModal) closeEditModal();
             if (event.target === dateModal) closeDateModal();
-            if (event.target === idModal) closeIdModal();
+            if (event.target === authModal) document.getElementById('auth-modal').style.display = 'none';
         });
 
         // === ИНИЦИАЛИЗАЦИЯ ===
         document.addEventListener('DOMContentLoaded', function() {
-            // Проверяем права пользователя при загрузке
-            checkUserAccess();
+            initAuth();
             loadTheme();
-            loadData();
             updateTime();
             setInterval(updateTime, 1000);
-            // Запускаем проверку автообновления каждую минуту
-            setInterval(checkAutoUpdate, 60000);
+            setInterval(checkAutoUpdate, 60000); // Проверяем обновление каждую минуту
         });
     </script>
 </body>
