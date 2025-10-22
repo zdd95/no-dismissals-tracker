@@ -323,6 +323,26 @@
             color: #e0e0e0;
         }
         
+        .admin-info {
+            display: none;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #888;
+            padding: 8px 12px;
+            background-color: rgba(52, 152, 219, 0.1);
+            border-radius: 6px;
+            border-left: 3px solid #3498db;
+        }
+        
+        .admin-info.visible {
+            display: block;
+        }
+        
+        .dark-theme .admin-info {
+            background-color: rgba(52, 152, 219, 0.2);
+            color: #bdc3c7;
+        }
+        
         .buttons {
             display: flex;
             justify-content: center;
@@ -965,7 +985,10 @@
         
         <div class="date-info">
             <p>Последнее увольнение: <span id="last-dismissal">0</span></p>
-            <p style="margin-top: 10px; font-size: 0.9rem; color: #888;" id="last-updated-info"></p>
+            <!-- Админская информация о последнем изменении -->
+            <div class="admin-info" id="admin-info">
+                Последнее изменение: <span id="last-updated-info">загрузка...</span>
+            </div>
         </div>
         
         <!-- Блок управления для администраторов -->
@@ -1054,6 +1077,9 @@
                     const isAdmin = checkUserAccess(user);
                     showAuthStatus(user, isAdmin);
                     
+                    // Показываем/скрываем админскую информацию
+                    updateAdminInfoVisibility(isAdmin);
+                    
                     // При входе администратора проверяем и обновляем максимальную серию
                     if (isAdmin) {
                         checkAndUpdateMaxDays();
@@ -1062,6 +1088,9 @@
                     console.log('User not logged in - read only mode');
                     updateAuthUI(null);
                     showAuthStatus(null, false);
+                    
+                    // Скрываем админскую информацию
+                    updateAdminInfoVisibility(false);
                 }
                 
                 // Загружаем данные только если они еще не загружены
@@ -1092,6 +1121,15 @@
                 adminControls.classList.remove('visible');
             }
             document.getElementById('auth-modal').style.display = 'none';
+        }
+        
+        function updateAdminInfoVisibility(isAdmin) {
+            const adminInfo = document.getElementById('admin-info');
+            if (isAdmin) {
+                adminInfo.classList.add('visible');
+            } else {
+                adminInfo.classList.remove('visible');
+            }
         }
         
         function showAuthStatus(user, isAdmin) {
@@ -1354,7 +1392,7 @@
         }
 
         // === FIREBASE DATABASE ФУНКЦИИ ===
-
+    
         function loadData() {
             // Сначала загружаем из localStorage для мгновенного отображения
             const hasLocalData = loadFromLocalStorage();
@@ -1405,9 +1443,9 @@
                         console.log('Data synchronized from Firebase');
                     }
                     
+                    // Обновляем информацию о последнем изменении (только для админов)
                     if (firebaseData.lastUpdatedBy) {
-                        document.getElementById('last-updated-info').textContent = 
-                            `Последнее изменение: ${firebaseData.lastUpdatedBy}`;
+                        document.getElementById('last-updated-info').textContent = firebaseData.lastUpdatedBy;
                     }
                 } else {
                     const user = auth.currentUser;
