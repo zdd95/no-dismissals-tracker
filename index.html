@@ -1033,11 +1033,13 @@
         const auth = firebase.auth();
     
         // Глобальные переменные
-        let maxDays, lastDismissalDate;
+        let maxDays = 0;
+        let lastDismissalDate = new Date();
         let currentEditType = '';
         let isDarkTheme = false;
         let isDatabaseAvailable = true;
         let lastShownCurrentDays = 0; // Для отслеживания показа модалки
+        let dataLoaded = false; // Флаг загрузки данных
         
         // Список администраторов
         const ADMIN_USERS = ["zhambal.dashidondokov@shkulev.ru"];
@@ -1061,7 +1063,11 @@
                     updateAuthUI(null);
                     showAuthStatus(null, false);
                 }
-                loadData();
+                
+                // Загружаем данные только если они еще не загружены
+                if (!dataLoaded) {
+                    loadData();
+                }
             });
         }
         
@@ -1319,9 +1325,46 @@
             document.getElementById('info-modal').style.display = 'none';
         }
 
+        // === ЛОКАЛЬНОЕ ХРАНИЛИЩЕ ===
+        
+        function saveToLocalStorage() {
+            const data = {
+                maxDays: maxDays,
+                lastDismissalDate: lastDismissalDate.getTime(),
+                lastUpdated: Date.now()
+            };
+            localStorage.setItem('dismissalTracker', JSON.stringify(data));
+            console.log('Data saved to localStorage');
+        }
+        
+        function loadFromLocalStorage() {
+            const savedData = localStorage.getItem('dismissalTracker');
+            if (savedData) {
+                try {
+                    const data = JSON.parse(savedData);
+                    maxDays = data.maxDays || 0;
+                    lastDismissalDate = new Date(data.lastDismissalDate || Date.now());
+                    console.log('Data loaded from localStorage');
+                    return true;
+                } catch (e) {
+                    console.error('Error parsing localStorage data:', e);
+                }
+            }
+            return false;
+        }
+
         // === FIREBASE DATABASE ФУНКЦИИ ===
-    
+
         function loadData() {
+            // Сначала загружаем из localStorage для мгновенного отображения
+            const hasLocalData = loadFromLocalStorage();
+            
+            if (hasLocalData) {
+                updateDisplay();
+                dataLoaded = true;
+            }
+            
+            // Затем пытаемся загрузить из Firebase
             const dataRef = database.ref('dismissalTracker');
             
             const dbTimeout = setTimeout(() => {
@@ -1338,11 +1381,29 @@
                 const firebaseData = snapshot.val();
                 if (firebaseData) {
                     console.log('Using Firebase data');
-                    maxDays = firebaseData.maxDays || 0;
-                    lastDismissalDate = new Date(firebaseData.lastDismissalDate || Date.now());
                     
-                    updateCurrentDays();
-                    updateDisplay();
+                    // Всегда используем данные из Firebase, если они доступны
+                    const firebaseMaxDays = firebaseData.maxDays || 0;
+                    const firebaseLastDismissalDate = new Date(firebaseData.lastDismissalDate || Date.now());
+                    
+                    // Проверяем, отличаются ли данные от текущих
+                    const isDataDifferent = 
+                        firebaseMaxDays !== maxDays || 
+                        firebaseLastDismissalDate.getTime() !== lastDismissalDate.getTime();
+                    
+                    // Если данные отличаются - обновляем
+                    if (isDataDifferent) {
+                        console.log('Data differs, updating from Firebase');
+                        maxDays = firebaseMaxDays;
+                        lastDismissalDate = firebaseLastDismissalDate;
+                        
+                        // Обновляем localStorage
+                        saveToLocalStorage();
+                        
+                        updateDisplay();
+                        
+                        console.log('Data synchronized from Firebase');
+                    }
                     
                     if (firebaseData.lastUpdatedBy) {
                         document.getElementById('last-updated-info').textContent = 
@@ -1352,30 +1413,41 @@
                     const user = auth.currentUser;
                     if (user && ADMIN_USERS.includes(user.email)) {
                         initDefaultData();
+                    } else if (!hasLocalData) {
+                        // Если нет данных ни в Firebase, ни в localStorage, инициализируем локально
+                        initLocalData();
                     }
                 }
+                
+                dataLoaded = true;
             }, (error) => {
                 clearTimeout(dbTimeout);
                 showDatabaseError();
                 isDatabaseAvailable = false;
+                
+                // Если Firebase недоступен, используем локальные данные
+                if (!hasLocalData) {
+                    initLocalData();
+                }
+                dataLoaded = true;
             });
         }
     
         function saveData() {
             const user = auth.currentUser;
-            if (!user) {
-                console.log('Cannot save: user not authenticated');
-                return;
-            }
             
             const data = {
                 maxDays: maxDays,
                 lastDismissalDate: lastDismissalDate.getTime(),
                 lastUpdated: Date.now(),
-                lastUpdatedBy: user.email
+                lastUpdatedBy: user ? user.email : 'anonymous'
             };
             
-            if (isDatabaseAvailable) {
+            // Всегда сохраняем в localStorage для быстрого доступа
+            saveToLocalStorage();
+            
+            // Сохраняем в Firebase только если пользователь авторизован и БД доступна
+            if (user && isDatabaseAvailable) {
                 database.ref('dismissalTracker').set(data)
                     .then(() => console.log('Data saved to Firebase'))
                     .catch((error) => {
@@ -1390,6 +1462,13 @@
             maxDays = 0;
             lastDismissalDate = new Date();
             saveData();
+        }
+        
+        function initLocalData() {
+            maxDays = 0;
+            lastDismissalDate = new Date();
+            saveToLocalStorage();
+            updateDisplay();
         }
 
         // === ТЕМА ===
