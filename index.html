@@ -952,6 +952,7 @@
                 <div class="counter-label">Текущая серия</div>
                 <div class="counter-value" id="current-days">0</div>
                 <div class="counter-label">дней</div>
+                <!-- Убрали карандаш редактирования для текущей серии -->
             </div>
             
             <div class="counter max-counter">
@@ -1036,16 +1037,19 @@
         let currentEditType = '';
         let isDarkTheme = false;
         let isDatabaseAvailable = true;
-        let lastShownCurrentDays = 0;
+        let lastShownCurrentDays = 0; // Для отслеживания показа модалки
+        
+        // Список администраторов
+        const ADMIN_USERS = ["zhambal.dashidondokov@shkulev.ru"];
 
         // === FIREBASE AUTHENTICATION ===
         
-        async function initAuth() {
-            auth.onAuthStateChanged(async (user) => {
+        function initAuth() {
+            auth.onAuthStateChanged((user) => {
                 if (user) {
                     console.log('User logged in:', user.email);
-                    const isAdmin = await checkUserAccess(user);
                     updateAuthUI(user);
+                    const isAdmin = checkUserAccess(user);
                     showAuthStatus(user, isAdmin);
                     
                     // При входе администратора проверяем и обновляем максимальную серию
@@ -1069,11 +1073,17 @@
             if (user) {
                 authBtn.style.display = 'none';
                 logoutBtn.style.display = 'block';
+                
+                const isAdmin = checkUserAccess(user);
+                if (isAdmin) {
+                    adminControls.classList.add('visible');
+                } else {
+                    adminControls.classList.remove('visible');
+                }
             } else {
                 authBtn.style.display = 'block';
                 logoutBtn.style.display = 'none';
                 adminControls.classList.remove('visible');
-                document.getElementById('main-container').classList.remove('edit-controls-visible');
             }
             document.getElementById('auth-modal').style.display = 'none';
         }
@@ -1210,35 +1220,24 @@
 
         // === УПРАВЛЕНИЕ ДОСТУПОМ ===
         
-        async function checkUserAccess(user) {
-            try {
-                const snapshot = await database.ref('adminUsers/' + user.email).once('value');
-                const isAdmin = snapshot.exists();
-                
-                if (isAdmin) {
-                    document.getElementById('main-container').classList.add('edit-controls-visible');
-                    document.getElementById('admin-controls').classList.add('visible');
-                } else {
-                    document.getElementById('main-container').classList.remove('edit-controls-visible');
-                    document.getElementById('admin-controls').classList.remove('visible');
-                }
-                return isAdmin;
-            } catch (error) {
-                console.error('Error checking admin access:', error);
-                return false;
+        function checkUserAccess(user) {
+            const isAdmin = ADMIN_USERS.includes(user.email);
+            if (isAdmin) {
+                document.getElementById('main-container').classList.add('edit-controls-visible');
+            } else {
+                document.getElementById('main-container').classList.remove('edit-controls-visible');
             }
+            return isAdmin;
         }
         
-        async function requireAdmin() {
+        function requireAdmin() {
             const user = auth.currentUser;
             if (!user) {
                 alert('Для выполнения этого действия необходимо войти в систему');
                 openAuthModal();
                 return false;
             }
-            
-            const isAdmin = await checkUserAccess(user);
-            if (!isAdmin) {
+            if (!ADMIN_USERS.includes(user.email)) {
                 alert('У вас недостаточно прав для выполнения этого действия');
                 return false;
             }
@@ -1258,31 +1257,29 @@
             return Math.floor((todayUTC - lastDismissalUTC) / (1000 * 60 * 60 * 24));
         }
         
-        async function updateCurrentDays() {
+        function updateCurrentDays() {
             const currentDays = calculateCurrentDays();
             document.getElementById('current-days').textContent = currentDays;
             
             // Проверяем, нужно ли показать модалку о новом рекорде
-            await checkForNewRecord(currentDays);
+            checkForNewRecord(currentDays);
             
             // Автоматически обновляем максимальную серию если текущая больше (только для админов)
             const user = auth.currentUser;
-            if (user && currentDays > maxDays) {
-                const isAdmin = await checkUserAccess(user);
-                if (isAdmin) {
-                    maxDays = currentDays;
-                    saveData();
-                }
+            if (currentDays > maxDays && user && ADMIN_USERS.includes(user.email)) {
+                maxDays = currentDays;
+                saveData();
             }
         }
         
-        async function checkForNewRecord(currentDays) {
+        function checkForNewRecord(currentDays) {
+            // Показываем модалку только если:
+            // 1. Текущая серия больше максимальной
+            // 2. Это новое значение (не показываем повторно для того же значения)
+            // 3. Пользователь не администратор (админы сразу обновляют данные)
             const user = auth.currentUser;
-            let isAdmin = false;
-            if (user) {
-                isAdmin = await checkUserAccess(user);
-            }
-
+            const isAdmin = user && ADMIN_USERS.includes(user.email);
+            
             if (currentDays > maxDays && currentDays !== lastShownCurrentDays && !isAdmin) {
                 showInfoModal(currentDays);
                 lastShownCurrentDays = currentDays;
@@ -1353,12 +1350,8 @@
                     }
                 } else {
                     const user = auth.currentUser;
-                    if (user) {
-                        checkUserAccess(user).then(isAdmin => {
-                            if (isAdmin) {
-                                initDefaultData();
-                            }
-                        });
+                    if (user && ADMIN_USERS.includes(user.email)) {
+                        initDefaultData();
                     }
                 }
             }, (error) => {
@@ -1474,7 +1467,7 @@
         function updateDisplay() {
             document.getElementById('max-days').textContent = maxDays;
             document.getElementById('last-dismissal').textContent = formatDate(lastDismissalDate);
-            updateCurrentDays();
+            updateCurrentDays(); // Всегда обновляем текущие дни при обновлении дисплея
         }
     
         function formatDate(date) {
@@ -1484,8 +1477,8 @@
 
         // === МОДАЛЬНЫЕ ОКНА ===
     
-        async function openEditModal(type) {
-            if (!await requireAdmin()) return;
+        function openEditModal(type) {
+            if (!requireAdmin()) return;
             
             currentEditType = type;
             const modal = document.getElementById('editModal');
@@ -1503,8 +1496,8 @@
             document.getElementById('editModal').style.display = 'none';
         }
     
-        async function saveEdit() {
-            if (!await requireAdmin()) return;
+        function saveEdit() {
+            if (!requireAdmin()) return;
             
             const input = document.getElementById('edit-value');
             const value = parseInt(input.value);
@@ -1523,8 +1516,8 @@
             closeEditModal();
         }
     
-        async function openDateModal() {
-            if (!await requireAdmin()) return;
+        function openDateModal() {
+            if (!requireAdmin()) return;
             
             const modal = document.getElementById('dateModal');
             const lastDismissalInput = document.getElementById('last-dismissal-date');
@@ -1536,8 +1529,8 @@
             document.getElementById('dateModal').style.display = 'none';
         }
     
-        async function saveDates() {
-            if (!await requireAdmin()) return;
+        function saveDates() {
+            if (!requireAdmin()) return;
             
             const lastDismissalInput = document.getElementById('last-dismissal-date');
             if (!lastDismissalInput.value) {
@@ -1553,8 +1546,8 @@
 
         // === ОБРАБОТЧИКИ СОБЫТИЙ ===
     
-        document.getElementById('reset-btn').addEventListener('click', async function() {
-            if (!await requireAdmin()) return;
+        document.getElementById('reset-btn').addEventListener('click', function() {
+            if (!requireAdmin()) return;
             
             if (confirm('Вы уверены, что хотите сбросить счётчик? Это действие нельзя отменить.')) {
                 lastDismissalDate = new Date();
@@ -1563,11 +1556,7 @@
             }
         });
     
-        document.getElementById('edit-date-btn').addEventListener('click', async function() {
-            if (!await requireAdmin()) return;
-            openDateModal();
-        });
-    
+        document.getElementById('edit-date-btn').addEventListener('click', openDateModal);
         document.getElementById('auth-btn').addEventListener('click', openAuthModal);
         document.getElementById('logout-btn').addEventListener('click', logout);
         document.getElementById('theme-switch').addEventListener('change', toggleTheme);
@@ -1590,7 +1579,7 @@
             loadTheme();
             updateTime();
             setInterval(updateTime, 1000);
-            setInterval(checkAutoUpdate, 60000);
+            setInterval(checkAutoUpdate, 60000); // Проверяем обновление каждую минуту
         });
     </script>
 </body>
