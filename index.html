@@ -1289,7 +1289,7 @@
         }
 
         // === ОСНОВНЫЕ ФУНКЦИИ ===
-        
+
         function calculateCurrentDays() {
             const now = new Date();
             const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
@@ -1300,7 +1300,7 @@
             );
             return Math.floor((todayUTC - lastDismissalUTC) / (1000 * 60 * 60 * 24));
         }
-        
+
         function updateCurrentDays() {
             const currentDays = calculateCurrentDays();
             document.getElementById('current-days').textContent = currentDays;
@@ -1311,11 +1311,13 @@
             // Автоматически обновляем максимальную серию если текущая больше (только для админов)
             const user = auth.currentUser;
             if (currentDays > maxDays && user && ADMIN_USERS.includes(user.email)) {
+                console.log('Admin: auto-updating max days from', maxDays, 'to', currentDays);
                 maxDays = currentDays;
-                saveData();
+                saveData(); // Сохраняем в БД
+                updateDisplay(); // Сразу обновляем интерфейс
             }
         }
-        
+
         function checkForNewRecord(currentDays) {
             // Показываем модалку только если:
             // 1. Текущая серия больше максимальной
@@ -1329,19 +1331,21 @@
                 lastShownCurrentDays = currentDays;
             }
         }
-        
+
         function checkAndUpdateMaxDays() {
             // Функция для администратора - проверяет и обновляет максимальную серию
             const currentDays = calculateCurrentDays();
             if (currentDays > maxDays) {
+                console.log('Admin: updating max days on login from', maxDays, 'to', currentDays);
                 maxDays = currentDays;
-                saveData();
+                saveData(); // Сохраняем в БД
+                updateDisplay(); // Сразу обновляем интерфейс
                 
                 // Показываем уведомление для администратора
                 showAdminUpdateNotification(currentDays);
             }
         }
-        
+
         function showAdminUpdateNotification(currentDays) {
             const authStatus = document.getElementById('auth-status');
             authStatus.className = 'auth-status admin';
@@ -1353,18 +1357,18 @@
         }
 
         // === ИНФОРМАЦИОННАЯ МОДАЛКА ===
-        
+
         function showInfoModal(currentDays) {
             document.getElementById('info-current-days').textContent = currentDays;
             document.getElementById('info-modal').style.display = 'flex';
         }
-        
+
         function closeInfoModal() {
             document.getElementById('info-modal').style.display = 'none';
         }
 
         // === ЛОКАЛЬНОЕ ХРАНИЛИЩЕ ===
-        
+
         function saveToLocalStorage() {
             const data = {
                 maxDays: maxDays,
@@ -1374,7 +1378,7 @@
             localStorage.setItem('dismissalTracker', JSON.stringify(data));
             console.log('Data saved to localStorage');
         }
-        
+
         function loadFromLocalStorage() {
             const savedData = localStorage.getItem('dismissalTracker');
             if (savedData) {
@@ -1392,7 +1396,7 @@
         }
 
         // === FIREBASE DATABASE ФУНКЦИИ ===
-    
+
         function loadData() {
             // Сначала загружаем из localStorage для мгновенного отображения
             const hasLocalData = loadFromLocalStorage();
@@ -1418,7 +1422,7 @@
                 
                 const firebaseData = snapshot.val();
                 if (firebaseData) {
-                    console.log('Using Firebase data');
+                    console.log('Firebase data received:', firebaseData);
                     
                     // Всегда используем данные из Firebase, если они доступны
                     const firebaseMaxDays = firebaseData.maxDays || 0;
@@ -1431,7 +1435,7 @@
                     
                     // Если данные отличаются - обновляем
                     if (isDataDifferent) {
-                        console.log('Data differs, updating from Firebase');
+                        console.log('Data differs, updating from Firebase. Local maxDays:', maxDays, 'Firebase maxDays:', firebaseMaxDays);
                         maxDays = firebaseMaxDays;
                         lastDismissalDate = firebaseLastDismissalDate;
                         
@@ -1448,6 +1452,7 @@
                         document.getElementById('last-updated-info').textContent = firebaseData.lastUpdatedBy;
                     }
                 } else {
+                    console.log('No data in Firebase');
                     const user = auth.currentUser;
                     if (user && ADMIN_USERS.includes(user.email)) {
                         initDefaultData();
@@ -1460,6 +1465,7 @@
                 dataLoaded = true;
             }, (error) => {
                 clearTimeout(dbTimeout);
+                console.error('Firebase error:', error);
                 showDatabaseError();
                 isDatabaseAvailable = false;
                 
@@ -1470,7 +1476,7 @@
                 dataLoaded = true;
             });
         }
-    
+
         function saveData() {
             const user = auth.currentUser;
             
@@ -1481,27 +1487,39 @@
                 lastUpdatedBy: user ? user.email : 'anonymous'
             };
             
+            console.log('Saving data:', data);
+            
             // Всегда сохраняем в localStorage для быстрого доступа
             saveToLocalStorage();
             
             // Сохраняем в Firebase только если пользователь авторизован и БД доступна
             if (user && isDatabaseAvailable) {
-                database.ref('dismissalTracker').set(data)
-                    .then(() => console.log('Data saved to Firebase'))
+                return database.ref('dismissalTracker').set(data)
+                    .then(() => {
+                        console.log('Data saved to Firebase');
+                        // После успешного сохранения в БД обновляем интерфейс
+                        updateDisplay();
+                        return true;
+                    })
                     .catch((error) => {
                         console.error('Error saving to Firebase:', error);
                         showDatabaseError();
                         isDatabaseAvailable = false;
+                        return false;
                     });
+            } else {
+                // Если не сохраняем в БД, все равно обновляем интерфейс
+                updateDisplay();
+                return Promise.resolve(true);
             }
         }
-    
+
         function initDefaultData() {
             maxDays = 0;
             lastDismissalDate = new Date();
             saveData();
         }
-        
+
         function initLocalData() {
             maxDays = 0;
             lastDismissalDate = new Date();
@@ -1510,7 +1528,7 @@
         }
 
         // === ТЕМА ===
-    
+
         function loadTheme() {
             const savedTheme = localStorage.getItem('userTheme');
             isDarkTheme = savedTheme === 'dark';
@@ -1520,18 +1538,18 @@
             }
             updateThemeIcons();
         }
-    
+
         function saveTheme() {
             localStorage.setItem('userTheme', isDarkTheme ? 'dark' : 'light');
         }
-    
+
         function toggleTheme() {
             isDarkTheme = !isDarkTheme;
             document.body.classList.toggle('dark-theme', isDarkTheme);
             updateThemeIcons();
             saveTheme();
         }
-    
+
         function updateThemeIcons() {
             const sunIcon = document.querySelector('.sun-icon');
             const moonIcon = document.querySelector('.moon-icon');
@@ -1545,14 +1563,14 @@
         }
 
         // === УВЕДОМЛЕНИЯ О БД ===
-    
+
         function showDatabaseError() {
             isDatabaseAvailable = false;
             const notification = document.getElementById('db-notification');
             notification.classList.add('show');
             setTimeout(() => hideDatabaseError(), 10000);
         }
-    
+
         function hideDatabaseError() {
             const notification = document.getElementById('db-notification');
             notification.classList.remove('show');
@@ -1562,12 +1580,12 @@
             // Автоматически обновляем текущие дни каждую минуту
             updateCurrentDays();
         }
-    
+
         function getDayOfWeek(date) {
             const days = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
             return days[date.getDay()];
         }
-    
+
         function updateTime() {
             const now = new Date();
             const hours = String(now.getHours()).padStart(2, '0');
@@ -1580,20 +1598,21 @@
             const fullTimeString = `${dayOfWeek}, ${day}.${month}.${year}, ${hours}:${minutes}:${seconds}`;
             document.getElementById('full-time').textContent = fullTimeString;
         }
-    
+
         function updateDisplay() {
+            console.log('Updating display - maxDays:', maxDays, 'lastDismissalDate:', lastDismissalDate);
             document.getElementById('max-days').textContent = maxDays;
             document.getElementById('last-dismissal').textContent = formatDate(lastDismissalDate);
             updateCurrentDays(); // Всегда обновляем текущие дни при обновлении дисплея
         }
-    
+
         function formatDate(date) {
             const options = { day: 'numeric', month: 'long', year: 'numeric' };
             return date.toLocaleDateString('ru-RU', options);
         }
 
         // === МОДАЛЬНЫЕ ОКНА ===
-    
+
         function openEditModal(type) {
             if (!requireAdmin()) return;
             
@@ -1608,11 +1627,11 @@
             modal.style.display = 'flex';
             input.focus();
         }
-    
+
         function closeEditModal() {
             document.getElementById('editModal').style.display = 'none';
         }
-    
+
         function saveEdit() {
             if (!requireAdmin()) return;
             
@@ -1632,7 +1651,7 @@
             updateDisplay();
             closeEditModal();
         }
-    
+
         function openDateModal() {
             if (!requireAdmin()) return;
             
@@ -1641,11 +1660,11 @@
             lastDismissalInput.valueAsDate = lastDismissalDate;
             modal.style.display = 'flex';
         }
-    
+
         function closeDateModal() {
             document.getElementById('dateModal').style.display = 'none';
         }
-    
+
         function saveDates() {
             if (!requireAdmin()) return;
             
@@ -1662,7 +1681,7 @@
         }
 
         // === ОБРАБОТЧИКИ СОБЫТИЙ ===
-    
+
         document.getElementById('reset-btn').addEventListener('click', function() {
             if (!requireAdmin()) return;
             
@@ -1672,12 +1691,12 @@
                 updateDisplay();
             }
         });
-    
+
         document.getElementById('edit-date-btn').addEventListener('click', openDateModal);
         document.getElementById('auth-btn').addEventListener('click', openAuthModal);
         document.getElementById('logout-btn').addEventListener('click', logout);
         document.getElementById('theme-switch').addEventListener('change', toggleTheme);
-    
+
         window.addEventListener('click', function(event) {
             const editModal = document.getElementById('editModal');
             const dateModal = document.getElementById('dateModal');
