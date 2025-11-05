@@ -774,6 +774,135 @@
             background-color: #2980b9;
         }
 
+        /* Стили для модалки увольнения */
+        .dismissal-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1005;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .dismissal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+        }
+        
+        .dark-theme .dismissal-content {
+            background-color: #2d2d2d;
+            color: #ffffff;
+        }
+        
+        .dismissal-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        
+        .dismissal-title {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        
+        .dark-theme .dismissal-title {
+            color: #ffffff;
+        }
+        
+        .dismissal-text {
+            margin-bottom: 20px;
+            line-height: 1.5;
+            color: #555;
+        }
+        
+        .dark-theme .dismissal-text {
+            color: #e0e0e0;
+        }
+        
+        .dismissal-date {
+            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+            color: rgb(255, 255, 255);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin: 8px 0;
+            display: inline-block;
+        }
+        
+        .date-comparison {
+            display: flex;
+            justify-content: space-between;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        
+        .date-item {
+            flex: 1;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .dark-theme .date-item {
+            background-color: #3d3d3d;
+        }
+        
+        .date-label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #7f8c8d;
+        }
+        
+        .dark-theme .date-label {
+            color: #bdc3c7;
+        }
+        
+        .date-value {
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        
+        .dark-theme .date-value {
+            color: #ffffff;
+        }
+        
+        .dismissal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .dismissal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            min-width: 120px;
+        }
+        
+        .dismissal-ok-btn {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .dismissal-ok-btn:hover {
+            background-color: #2980b9;
+        }
+
         @keyframes slideIn {
             from {
                 transform: translateX(100%);
@@ -851,6 +980,10 @@
             .info-buttons {
                 flex-direction: column;
             }
+
+            .date-comparison {
+                flex-direction: column;
+            }
         }
         
         @media (max-width: 600px) {
@@ -912,7 +1045,7 @@
         </div>
     </div>
 
-    <!-- Информационное модальное окно -->
+    <!-- Информационное модальное окно о новом рекорде -->
     <div class="info-modal" id="info-modal">
         <div class="info-content">
             <div class="info-icon" id="info-icon">🎉</div>
@@ -928,6 +1061,34 @@
             </div>
             <div class="info-buttons">
                 <button class="info-btn info-ok-btn" onclick="closeInfoModal()">Понятно</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно об увольнении -->
+    <div class="dismissal-modal" id="dismissal-modal">
+        <div class="dismissal-content">
+            <div class="dismissal-icon">😔</div>
+            <h2 class="dismissal-title">У нас потери</h2>
+            <div class="dismissal-text">
+                Нам жаль сообщать, но произошло увольнение.
+                Дата последнего увольнения обновилась.
+            </div>
+            <div class="date-comparison">
+                <div class="date-item">
+                    <div class="date-label">Предыдущая дата:</div>
+                    <div class="date-value" id="prev-dismissal-date">-</div>
+                </div>
+                <div class="date-item">
+                    <div class="date-label">Новая дата:</div>
+                    <div class="date-value" id="new-dismissal-date">-</div>
+                </div>
+            </div>
+            <div class="dismissal-date">
+                Начинаем новую серию с чистого листа!
+            </div>
+            <div class="dismissal-buttons">
+                <button class="dismissal-btn dismissal-ok-btn" onclick="closeDismissalModal()">Понятно</button>
             </div>
         </div>
     </div>
@@ -1063,6 +1224,7 @@
         let isDatabaseAvailable = true;
         let lastShownCurrentDays = 0; // Для отслеживания показа модалки
         let dataLoaded = false; // Флаг загрузки данных
+        let previousDismissalDate = new Date(); // Для отслеживания предыдущей даты увольнения
         
         // Список администраторов
         const ADMIN_USERS = ["zhambal.dashidondokov@shkulev.ru"];
@@ -1356,7 +1518,7 @@
             }, 5000);
         }
 
-        // === ИНФОРМАЦИОННАЯ МОДАЛКА ===
+        // === МОДАЛЬНЫЕ ОКНА ===
 
         function showInfoModal(currentDays) {
             document.getElementById('info-current-days').textContent = currentDays;
@@ -1367,12 +1529,23 @@
             document.getElementById('info-modal').style.display = 'none';
         }
 
+        function showDismissalModal(prevDate, newDate) {
+            document.getElementById('prev-dismissal-date').textContent = formatDate(prevDate);
+            document.getElementById('new-dismissal-date').textContent = formatDate(newDate);
+            document.getElementById('dismissal-modal').style.display = 'flex';
+        }
+
+        function closeDismissalModal() {
+            document.getElementById('dismissal-modal').style.display = 'none';
+        }
+
         // === ЛОКАЛЬНОЕ ХРАНИЛИЩЕ ===
 
         function saveToLocalStorage() {
             const data = {
                 maxDays: maxDays,
                 lastDismissalDate: lastDismissalDate.getTime(),
+                previousDismissalDate: previousDismissalDate.getTime(),
                 lastUpdated: Date.now()
             };
             localStorage.setItem('dismissalTracker', JSON.stringify(data));
@@ -1386,6 +1559,7 @@
                     const data = JSON.parse(savedData);
                     maxDays = data.maxDays || 0;
                     lastDismissalDate = new Date(data.lastDismissalDate || Date.now());
+                    previousDismissalDate = new Date(data.previousDismissalDate || data.lastDismissalDate || Date.now());
                     console.log('Data loaded from localStorage');
                     return true;
                 } catch (e) {
@@ -1428,6 +1602,9 @@
                     const firebaseMaxDays = firebaseData.maxDays || 0;
                     const firebaseLastDismissalDate = new Date(firebaseData.lastDismissalDate || Date.now());
                     
+                    // Сохраняем предыдущую дату для сравнения
+                    const oldLastDismissalDate = new Date(lastDismissalDate);
+                    
                     // Проверяем, отличаются ли данные от текущих
                     const isDataDifferent = 
                         firebaseMaxDays !== maxDays || 
@@ -1436,6 +1613,11 @@
                     // Если данные отличаются - обновляем
                     if (isDataDifferent) {
                         console.log('Data differs, updating from Firebase. Local maxDays:', maxDays, 'Firebase maxDays:', firebaseMaxDays);
+                        
+                        // Проверяем, изменилась ли дата увольнения
+                        const isDismissalDateChanged = 
+                            firebaseLastDismissalDate.getTime() !== lastDismissalDate.getTime();
+                        
                         maxDays = firebaseMaxDays;
                         lastDismissalDate = firebaseLastDismissalDate;
                         
@@ -1445,6 +1627,16 @@
                         updateDisplay();
                         
                         console.log('Data synchronized from Firebase');
+                        
+                        // Если дата увольнения изменилась и пользователь не админ - показываем модалку
+                        const user = auth.currentUser;
+                        const isAdmin = user && ADMIN_USERS.includes(user.email);
+                        if (isDismissalDateChanged && !isAdmin) {
+                            // Ждем немного чтобы интерфейс обновился
+                            setTimeout(() => {
+                                showDismissalModal(oldLastDismissalDate, lastDismissalDate);
+                            }, 1000);
+                        }
                     }
                     
                     // Обновляем информацию о последнем изменении (только для админов)
@@ -1517,12 +1709,14 @@
         function initDefaultData() {
             maxDays = 0;
             lastDismissalDate = new Date();
+            previousDismissalDate = new Date();
             saveData();
         }
 
         function initLocalData() {
             maxDays = 0;
             lastDismissalDate = new Date();
+            previousDismissalDate = new Date();
             saveToLocalStorage();
             updateDisplay();
         }
@@ -1611,7 +1805,7 @@
             return date.toLocaleDateString('ru-RU', options);
         }
 
-        // === МОДАЛЬНЫЕ ОКНА ===
+        // === МОДАЛЬНЫЕ ОКНА РЕДАКТИРОВАНИЯ ===
 
         function openEditModal(type) {
             if (!requireAdmin()) return;
@@ -1674,6 +1868,8 @@
                 return;
             }
             
+            // Сохраняем предыдущую дату перед изменением
+            previousDismissalDate = new Date(lastDismissalDate);
             lastDismissalDate = new Date(lastDismissalInput.value);
             saveData();
             updateDisplay();
@@ -1686,6 +1882,8 @@
             if (!requireAdmin()) return;
             
             if (confirm('Вы уверены, что хотите сбросить счётчик? Это действие нельзя отменить.')) {
+                // Сохраняем предыдущую дату перед сбросом
+                previousDismissalDate = new Date(lastDismissalDate);
                 lastDismissalDate = new Date();
                 saveData();
                 updateDisplay();
@@ -1702,11 +1900,13 @@
             const dateModal = document.getElementById('dateModal');
             const authModal = document.getElementById('auth-modal');
             const infoModal = document.getElementById('info-modal');
+            const dismissalModal = document.getElementById('dismissal-modal');
             
             if (event.target === editModal) closeEditModal();
             if (event.target === dateModal) closeDateModal();
             if (event.target === authModal) document.getElementById('auth-modal').style.display = 'none';
             if (event.target === infoModal) closeInfoModal();
+            if (event.target === dismissalModal) closeDismissalModal();
         });
 
         // === ИНИЦИАЛИЗАЦИЯ ===
