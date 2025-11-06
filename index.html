@@ -1614,9 +1614,12 @@
                     if (isDataDifferent) {
                         console.log('Data differs, updating from Firebase. Local maxDays:', maxDays, 'Firebase maxDays:', firebaseMaxDays);
                         
-                        // Проверяем, изменилась ли дата увольнения
+                        // Проверяем, изменилась ли дата увольнения и стала ли она НОВЕЕ (позже)
                         const isDismissalDateChanged = 
                             firebaseLastDismissalDate.getTime() !== lastDismissalDate.getTime();
+                        
+                        // Проверяем, что новая дата СВЕЖЕЕ (позже) чем старая
+                        const isNewDateFresher = firebaseLastDismissalDate > lastDismissalDate;
                         
                         maxDays = firebaseMaxDays;
                         lastDismissalDate = firebaseLastDismissalDate;
@@ -1628,10 +1631,11 @@
                         
                         console.log('Data synchronized from Firebase');
                         
-                        // Если дата увольнения изменилась и пользователь не админ - показываем модалку
+                        // Если дата увольнения изменилась, стала СВЕЖЕЕ и пользователь не админ - показываем модалку
                         const user = auth.currentUser;
                         const isAdmin = user && ADMIN_USERS.includes(user.email);
-                        if (isDismissalDateChanged && !isAdmin) {
+                        
+                        if (isDismissalDateChanged && isNewDateFresher && !isAdmin) {
                             // Ждем немного чтобы интерфейс обновился
                             setTimeout(() => {
                                 showDismissalModal(oldLastDismissalDate, lastDismissalDate);
